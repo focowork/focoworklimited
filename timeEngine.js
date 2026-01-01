@@ -16,34 +16,45 @@ function now() {
 }
 
 function generateId() {
-  return Math.random().toString(36).slice(2);
+  return crypto.randomUUID();
+}
+
+function getCurrentBlock() {
+  return blocks.find(b => b.id === state.currentBlockId);
 }
 
 function closeCurrentBlock() {
-  if (!state.currentBlock) return;
-  const block = blocks.find(b => b.id === state.currentBlock);
-  if (!block) return;
+  if (!state.currentBlockId) return;
+
+  const block = getCurrentBlock();
+  if (!block || block.fin) return;
+
   block.fin = now();
   saveBlocks(blocks);
-  state.currentBlock = null;
+
+  state.currentBlockId = null;
   saveState(state);
 }
 
-function startBlock(clientId, actividad) {
+function startBlock(clienteId, actividad) {
   const block = {
     id: generateId(),
-    clientId,
+    cliente_id: clienteId,
     actividad,
     inicio: now(),
     fin: null
   };
+
   blocks.push(block);
   saveBlocks(blocks);
-  state.currentBlock = block.id;
+
+  state.currentBlockId = block.id;
   saveState(state);
 }
 
 export function newClient(nombre) {
+
+  // Límite versión prueba
   if (clients.length >= 2) {
     alert("Versión de prueba: máximo 2 clientes");
     return;
@@ -68,27 +79,31 @@ export function newClient(nombre) {
   startBlock(client.id, "trabajo");
 }
 
-export function changeClient(id) {
-  if (state.currentClientId === id) return;
-  closeCurrentBlock();
-  state.currentClientId = id;
-  saveState(state);
-  startBlock(id, "trabajo");
-}
-
-export function changeActivity(act) {
+export function changeActivity(actividad) {
   if (!state.currentClientId) return;
   closeCurrentBlock();
-  startBlock(state.currentClientId, act);
+  startBlock(state.currentClientId, actividad);
+}
+
+export function changeClient(clienteId) {
+  closeCurrentBlock();
+  state.currentClientId = clienteId;
+  saveState(state);
+  startBlock(clienteId, "trabajo");
 }
 
 export function closeClient() {
+  if (!state.currentClientId) return;
+
   closeCurrentBlock();
+
   const client = clients.find(c => c.id === state.currentClientId);
   if (!client) return;
+
   client.estado = "cerrado";
   client.cerrado_en = now();
   saveClients(clients);
+
   state.currentClientId = null;
   saveState(state);
 }
