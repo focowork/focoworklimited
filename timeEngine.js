@@ -4,7 +4,8 @@ import {
   loadClients,
   saveClients,
   loadBlocks,
-  saveBlocks
+  saveBlocks,
+  loadLicense
 } from "./storage.js";
 
 let state = loadState();
@@ -53,9 +54,11 @@ function startBlock(clienteId, actividad) {
 }
 
 export function newClient(nombre) {
-
+  const license = loadLicense();
   const activos = clients.filter(c => c.estado === "abierto").length;
-  if (activos >= 2) {
+
+  // 🔒 LÍMITE SOLO EN TRIAL
+  if (license === "trial" && activos >= 2) {
     alert("Versión de prueba: máximo 2 clientes activos");
     return;
   }
