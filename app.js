@@ -6,6 +6,8 @@ import {
   getCurrentState
 } from "./timeEngine.js";
 
+import { loadLicense, saveLicense } from "./storage.js";
+
 document.addEventListener("DOMContentLoaded", () => {
 
   const ACTIVITY_LABELS = {
@@ -46,9 +48,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const infoText = document.getElementById("infoText");
 
   const trialBox = document.getElementById("trial-box");
+  const activateBtn = document.getElementById("activateFull");
 
   let timerInterval = null;
   const FOCUS_WINDOW_MS = 90 * 60 * 1000;
+
+  /* ===== LICENCIA ===== */
+  const license = loadLicense();
+  if (license === "full" && trialBox) {
+    trialBox.style.display = "none";
+  }
+
+  if (activateBtn) {
+    activateBtn.onclick = () => {
+      const code = prompt("Introduce tu código de activación");
+      if (!code) return;
+
+      if (code === "FOCOWORK-FULL") {
+        saveLicense("full");
+        alert("Versión completa activada");
+        location.reload();
+      } else {
+        alert("Código incorrecto");
+      }
+    };
+  }
 
   /* ===== UTIL ===== */
   function formatTime(ms) {
@@ -265,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // 🔹 Render inicial
-  if (trialBox) trialBox.style.display = "block";
+  if (trialBox && license === "trial") trialBox.style.display = "block";
   resetInfoPanel();
   updateUI();
 });
