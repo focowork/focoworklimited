@@ -39,3 +39,12 @@ export function loadBlocks() {
 export function saveBlocks(blocks) {
   save(STORAGE_KEYS.BLOCKS, blocks);
 }
+const LICENSE_KEY = "focowork_license";
+
+export function loadLicense() {
+  return localStorage.getItem(LICENSE_KEY) || "trial";
+}
+
+export function saveLicense(value) {
+  localStorage.setItem(LICENSE_KEY, value);
+    }
