@@ -101,4 +101,4 @@ export function closeClient() {
 
 export function getCurrentState() {
   return { state, clients, blocks };
-  }
+}
