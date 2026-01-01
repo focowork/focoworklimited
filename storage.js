@@ -4,19 +4,19 @@ const STORAGE_KEYS = {
   BLOCKS: "timeapp_blocks"
 };
 
-function load(key, def) {
+function load(key, defaultValue) {
   const raw = localStorage.getItem(key);
-  return raw ? JSON.parse(raw) : def;
+  return raw ? JSON.parse(raw) : defaultValue;
 }
 
-function save(key, val) {
-  localStorage.setItem(key, JSON.stringify(val));
+function save(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 export function loadState() {
   return load(STORAGE_KEYS.STATE, {
     currentClientId: null,
-    currentBlock: null
+    currentBlockId: null
   });
 }
 
