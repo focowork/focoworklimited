@@ -45,6 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const infoPanel = document.getElementById("infoPanel");
   const infoText = document.getElementById("infoText");
 
+  const trialBox = document.getElementById("trial-box");
+
   let timerInterval = null;
   const FOCUS_WINDOW_MS = 90 * 60 * 1000;
 
@@ -78,6 +80,11 @@ document.addEventListener("DOMContentLoaded", () => {
     clearSelection();
     const btn = document.querySelector(`.activity[data-activity="${act}"]`);
     if (btn) btn.classList.add("selected");
+  }
+
+  function resetInfoPanel() {
+    if (infoPanel) infoPanel.classList.add("hidden");
+    if (infoText) infoText.innerHTML = "";
   }
 
   function updateUI(lastActivity = null) {
@@ -122,6 +129,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("newClient").onclick = () => {
     const n = prompt("Nombre cliente:");
     if (!n) return;
+
+    resetInfoPanel();
+    clearSelection();
+
     newClient(n.trim());
     changeActivity("trabajo");
     selectActivity("trabajo");
@@ -137,6 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
     open.forEach((c, i) => txt += `${i + 1}. ${c.nombre}\n`);
     const sel = parseInt(prompt(txt), 10) - 1;
     if (!open[sel]) return;
+
+    resetInfoPanel();
+    clearSelection();
 
     changeClient(open[sel].id);
     changeActivity("trabajo");
@@ -198,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     alert(msg);
   };
 
-  /* ===== 📅 REPORTE DIARIO REAL ===== */
+  /* ===== 📅 REPORTE DIARIO ===== */
   todayBtn.onclick = () => {
     const { blocks } = getCurrentState();
     const now = new Date();
@@ -250,5 +264,8 @@ document.addEventListener("DOMContentLoaded", () => {
     URL.revokeObjectURL(url);
   };
 
+  // 🔹 Render inicial
+  if (trialBox) trialBox.style.display = "block";
+  resetInfoPanel();
   updateUI();
 });
