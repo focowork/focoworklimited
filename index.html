@@ -61,5 +61,10 @@
   </div>
 
   <script type="module" src="app.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/focoworklimited/sw.js");
+}
+     </script>
 </body>
         </html>
