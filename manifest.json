@@ -1,8 +1,7 @@
 {
   "name": "FocoWork",
   "short_name": "FocoWork",
-  "description": "Gestión de tiempo por cliente",
-  "start_url": ".",
+  "start_url": "/focoworklimited/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
