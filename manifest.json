@@ -2,6 +2,7 @@
   "name": "FocoWork",
   "short_name": "FocoWork",
   "start_url": "/focoworklimited/",
+  "scope": "/focoworklimited/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
