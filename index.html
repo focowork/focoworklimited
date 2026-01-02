@@ -1,12 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
- <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>FocoWork</title>
+
+  <!-- 🔑 MANIFEST (ruta absoluta obligatoria en GitHub Pages) -->
+  <link rel="manifest" href="/focoworklimited/manifest.json" />
+
+  <!-- 🔑 COLOR TEMA -->
+  <meta name="theme-color" content="#0f172a" />
+
+  <!-- 🔑 ICONO PARA iOS / fallback -->
+  <link rel="apple-touch-icon" href="/focoworklimited/icons/icon-192.png" />
+  <link rel="icon" href="/focoworklimited/icons/icon-192.png" />
+
+  <!-- ESTILOS -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -41,30 +51,24 @@
       <button id="todayBtn">📅 Hoy</button>
     </div>
 
-    <!-- PANEL INFERIOR (CIERRE CLIENTE) -->
+    <!-- PANEL INFERIOR -->
     <div id="infoPanel" class="info-panel hidden">
       <div id="infoTitle">Cliente cerrado</div>
       <div id="infoText"></div>
       <div class="ok">✔ Tiempo listo para facturación</div>
     </div>
 
-    <!-- 🔒 LICENCIA / VERSIÓN DE PRUEBA -->
-    <div id="trial-box" class="info-panel">
-      <div><strong>🔒 Versión de prueba</strong></div>
-      <div>Máximo 2 clientes activos simultáneamente</div>
-      <div class="ok">Activa la versión completa para quitar el límite</div>
-
-      <!-- 👉 BOTÓN DE ACTIVACIÓN -->
-      <button id="activateFull">Activar versión completa</button>
-    </div>
-
   </div>
 
+  <!-- APP -->
   <script type="module" src="app.js"></script>
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/focoworklimited/sw-v2.js");
-}
-     </script>
+
+  <!-- 🔑 SERVICE WORKER (ruta absoluta obligatoria) -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/focoworklimited/sw-v2.js");
+    }
+  </script>
+
 </body>
-        </html>
+</html>
