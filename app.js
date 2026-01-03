@@ -21,6 +21,17 @@ window.addEventListener("DOMContentLoaded", () => {
     const box = $("versionBox");
     if (box) box.style.display = "none";
   }
+
+  // Crear zona de total de cliente bajo el reloj (sin tocar HTML)
+  const timer = $("timer");
+  if (timer && !$("clientTotal")) {
+    const div = document.createElement("div");
+    div.id = "clientTotal";
+    div.style.fontSize = "0.85em";
+    div.style.opacity = "0.8";
+    div.style.marginTop = "4px";
+    timer.after(div);
+  }
 });
 
 /* ================= ENFOQUE DIARIO ================= */
@@ -76,7 +87,7 @@ function updateClientTotalUI() {
     if (el) el.textContent = "";
     return;
   }
-  el.textContent = `Total cliente hoy: ${formatSeconds(getClientTotal(currentClient))}`;
+  el.textContent = `Total cliente: ${formatSeconds(getClientTotal(currentClient))}`;
 }
 
 /* ================= RELOJ + ENFOQUE ================= */
