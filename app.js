@@ -15,7 +15,7 @@ let full = localStorage.getItem("fw_full") === "1";
 clients.forEach(c => c.active = false);
 save();
 
-/* ================= OCULTAR BLOQUE FULL ================= */
+/* ================= UI FULL ================= */
 window.addEventListener("DOMContentLoaded", () => {
   if (full) {
     const box = $("versionBox");
@@ -23,7 +23,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-/* ============ ENFOQUE DIARIO ================= */
+/* ================= ENFOQUE DIARIO ================= */
 let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   date: new Date().toISOString().slice(0, 10),
   trabajo: 0,
@@ -33,18 +33,18 @@ let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   otros: 0
 };
 
-/* ============ RESET DIARIO AUTOMÁTICO ================= */
+/* ================= RESET DIARIO ================= */
 function checkDailyReset() {
   const today = new Date().toISOString().slice(0, 10);
-
   if (dailyTime.date !== today) {
-    dailyTime.date = today;
-    dailyTime.trabajo = 0;
-    dailyTime.telefono = 0;
-    dailyTime.cliente = 0;
-    dailyTime.visitando = 0;
-    dailyTime.otros = 0;
-
+    dailyTime = {
+      date: today,
+      trabajo: 0,
+      telefono: 0,
+      cliente: 0,
+      visitando: 0,
+      otros: 0
+    };
     localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
   }
 }
@@ -65,7 +65,21 @@ function formatSeconds(sec) {
   return `${h}:${m}:${s}`;
 }
 
-/* ============ RELOJ + ENFOQUE ================= */
+function getClientTotal(client) {
+  if (!client) return 0;
+  return Object.values(client.activities).reduce((a, b) => a + b, 0);
+}
+
+function updateClientTotalUI() {
+  const el = $("clientTotal");
+  if (!el || !currentClient) {
+    if (el) el.textContent = "";
+    return;
+  }
+  el.textContent = `Total cliente hoy: ${formatSeconds(getClientTotal(currentClient))}`;
+}
+
+/* ================= RELOJ + ENFOQUE ================= */
 setInterval(() => {
   checkDailyReset();
 
@@ -77,6 +91,8 @@ setInterval(() => {
     dailyTime[currentActivity] += 1;
     localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
   }
+
+  updateClientTotalUI();
 }, 1000);
 
 /* ================= NUEVO CLIENTE ================= */
@@ -110,6 +126,7 @@ $("newClient").onclick = () => {
 
   $("clientName").textContent = `Cliente: ${name}`;
   $("activityName").textContent = "Trabajo";
+  updateClientTotalUI();
 
   save();
 };
@@ -137,10 +154,13 @@ $("changeClient").onclick = () => {
 
   currentClient = elegido;
   currentActivity = "trabajo";
+
+  T.reset();
   T.start();
 
   $("clientName").textContent = `Cliente: ${currentClient.name}`;
   $("activityName").textContent = "Trabajo";
+  updateClientTotalUI();
 
   save();
 };
@@ -153,12 +173,11 @@ $("closeClient").onclick = () => {
   currentClient.activities[currentActivity] += spent;
   currentClient.active = false;
 
-  const total = Object.values(currentClient.activities)
-    .reduce((a, b) => a + b, 0);
+  const total = getClientTotal(currentClient);
 
   $("infoPanel").classList.remove("hidden");
   $("infoText").textContent =
-    `Cliente: ${currentClient.name}\nTiempo total: ${T.format(total)}`;
+    `Cliente: ${currentClient.name}\nTiempo total: ${formatSeconds(total)}`;
 
   currentClient = null;
   currentActivity = null;
@@ -166,6 +185,7 @@ $("closeClient").onclick = () => {
   $("clientName").textContent = "Sin cliente activo";
   $("activityName").textContent = "—";
   $("timer").textContent = "00:00:00";
+  updateClientTotalUI();
 
   save();
 };
@@ -181,7 +201,10 @@ document.querySelectorAll(".activity").forEach(btn => {
     currentActivity = btn.dataset.activity;
     $("activityName").textContent = btn.textContent;
 
+    T.reset();
     T.start();
+    updateClientTotalUI();
+
     save();
   };
 });
