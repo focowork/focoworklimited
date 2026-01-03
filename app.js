@@ -11,9 +11,34 @@ let currentClient = null;
 let currentActivity = null;
 let full = localStorage.getItem("fw_full") === "1";
 
-/* 🔧 RESETEO DE SESIÓN (CLAVE) */
+/* 🔧 RESETEO DE SESIÓN */
 clients.forEach(c => c.active = false);
 save();
+
+/* ========= TIEMPO DIARIO (ENFOQUE) ========= */
+// segundos acumulados hoy
+let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
+  date: new Date().toISOString().slice(0, 10),
+  trabajo: 0,
+  telefono: 0,
+  cliente: 0,
+  visitando: 0,
+  otros: 0
+};
+
+// reset automático si cambia el día
+const today = new Date().toISOString().slice(0, 10);
+if (dailyTime.date !== today) {
+  dailyTime = {
+    date: today,
+    trabajo: 0,
+    telefono: 0,
+    cliente: 0,
+    visitando: 0,
+    otros: 0
+  };
+  localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
+}
 
 /* ========= UTIL ========= */
 function save() {
@@ -24,10 +49,29 @@ function activeClients() {
   return clients.filter(c => c.active);
 }
 
-/* ========= TIMER UI ========= */
+function saveDaily() {
+  localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
+}
+
+function formatSeconds(sec) {
+  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+/* ========= TIMER UI + ENFOQUE REALTIME ========= */
 setInterval(() => {
-  if (!currentClient) return;
+  if (!currentActivity) return;
+
+  // reloj visual
   $("timer").textContent = T.format(T.getElapsed());
+
+  // enfoque diario
+  if (dailyTime[currentActivity] !== undefined) {
+    dailyTime[currentActivity] += 1;
+    saveDaily();
+  }
 }, 1000);
 
 /* ========= NUEVO CLIENTE ========= */
@@ -76,9 +120,7 @@ $("changeClient").onclick = () => {
   }
 
   let msg = "Elige cliente:\n";
-  activos.forEach((c, i) => {
-    msg += `${i + 1}. ${c.name}\n`;
-  });
+  activos.forEach((c, i) => msg += `${i + 1}. ${c.name}\n`);
 
   const sel = parseInt(prompt(msg), 10);
   if (!sel || !activos[sel - 1]) return;
@@ -139,52 +181,41 @@ document.querySelectorAll(".activity").forEach(btn => {
   };
 });
 
-/* ========= 🎯 ENFOQUE (PULIDO) ========= */
+/* ========= 🎯 ENFOQUE DIARIO ========= */
 $("focusBtn").onclick = () => {
-  if (!currentClient) {
-    alert("No hay cliente activo");
-    return;
-  }
-
-  const a = currentClient.activities;
-  const total = Object.values(a).reduce((s, v) => s + v, 0);
+  const total =
+    dailyTime.trabajo +
+    dailyTime.telefono +
+    dailyTime.cliente +
+    dailyTime.visitando +
+    dailyTime.otros;
 
   if (total === 0) {
-    alert("Aún no hay tiempo suficiente");
+    alert("Aún no hay actividad registrada hoy.");
     return;
   }
 
-  const pctTrabajo = Math.round((a.trabajo / total) * 100);
+  const pctTrabajo = Math.round((dailyTime.trabajo / total) * 100);
 
-  let estado, texto;
-  if (pctTrabajo >= 64) {
-    estado = "🟢 Enfocado";
-    texto = "Buen nivel de foco";
-  } else if (pctTrabajo >= 40) {
-    estado = "🟡 Atención";
-    texto = "Puedes mejorar el foco";
-  } else {
-    estado = "🔴 Disperso";
-    texto = "Demasiadas interrupciones";
-  }
+  let estado = "🟢 Enfocado";
+  if (pctTrabajo < 64) estado = "🟡 Atención";
+  if (pctTrabajo < 40) estado = "🔴 Disperso";
 
   alert(
-`🎯 Enfoque
+`🎯 Enfoque de hoy
 
-Trabajo: ${T.format(a.trabajo)}
-Teléfono: ${T.format(a.telefono)}
-Cliente: ${T.format(a.cliente)}
-Visitando: ${T.format(a.visitando)}
-Otros: ${T.format(a.otros)}
+Trabajo: ${formatSeconds(dailyTime.trabajo)}
+Teléfono: ${formatSeconds(dailyTime.telefono)}
+Cliente: ${formatSeconds(dailyTime.cliente)}
+Visitando: ${formatSeconds(dailyTime.visitando)}
+Otros: ${formatSeconds(dailyTime.otros)}
 
 Trabajo: ${pctTrabajo}%
-
-${estado}
-${texto}`
+Estado: ${estado}`
   );
 };
 
-/* ========= REPORTE CSV ========= */
+/* ========= REPORTE CSV DIARIO ========= */
 $("todayBtn").onclick = () => {
   let csv = "Cliente,Trabajo,Telefono,Cliente,Visitando,Otros,Total\n";
 
@@ -198,7 +229,7 @@ $("todayBtn").onclick = () => {
   const blob = new Blob([csv], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "focowork.csv";
+  a.download = `focowork_${dailyTime.date}.csv`;
   a.click();
 };
 
@@ -210,10 +241,7 @@ $("activateFull").onclick = () => {
 
 $("licenseBtn").onclick = () => {
   const code = $("licenseInput").value.trim();
-  if (!code) {
-    alert("Introduce un código");
-    return;
-  }
+  if (!code) return alert("Introduce un código");
 
   if (code.startsWith("FW-FULL-")) {
     localStorage.setItem("fw_full", "1");
