@@ -1,49 +1,35 @@
-// timeEngine.js
-let engine = {
-  running: false,
-  startTime: 0,
-  currentActivity: null,
-  elapsedTotal: 0
-};
+let startTime = null;
+let elapsed = 0;
+let running = false;
 
-export function startClient() {
-  engine.running = true;
-  engine.startTime = Date.now();
-  engine.elapsedTotal = 0;
-  engine.currentActivity = null;
+export function start() {
+  if (running) return;
+  running = true;
+  startTime = Date.now();
 }
 
-export function stopClient() {
-  if (!engine.running) return engine.elapsedTotal;
-  engine.elapsedTotal += Date.now() - engine.startTime;
-  engine.running = false;
-  return engine.elapsedTotal;
+export function stop() {
+  if (!running) return elapsed;
+  elapsed += Date.now() - startTime;
+  running = false;
+  return elapsed;
 }
 
-export function switchActivity(activity, activitiesStore) {
-  if (!engine.running) return;
-
-  const now = Date.now();
-  const delta = now - engine.startTime;
-
-  if (engine.currentActivity) {
-    activitiesStore[engine.currentActivity] += delta;
-  }
-
-  engine.elapsedTotal += delta;
-  engine.startTime = now;
-  engine.currentActivity = activity;
+export function reset() {
+  startTime = null;
+  elapsed = 0;
+  running = false;
 }
 
 export function getElapsed() {
-  if (!engine.running) return engine.elapsedTotal;
-  return engine.elapsedTotal + (Date.now() - engine.startTime);
+  if (!running) return elapsed;
+  return elapsed + (Date.now() - startTime);
 }
 
 export function format(ms) {
-  const t = Math.floor(ms / 1000);
-  const h = String(Math.floor(t / 3600)).padStart(2, "0");
-  const m = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
-  const s = String(t % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-      }
+  const s = Math.floor(ms / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${sec}`;
+}
