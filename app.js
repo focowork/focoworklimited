@@ -135,19 +135,51 @@ document.querySelectorAll(".activity").forEach(btn => {
   };
 });
 
-/* ========= ENFOQUE ========= */
+/* ========= 🎯 ENFOQUE (PULIDO) ========= */
 $("focusBtn").onclick = () => {
-  if (!currentClient) return;
+  if (!currentClient) {
+    alert("No hay cliente activo");
+    return;
+  }
 
   const a = currentClient.activities;
-  const total = Object.values(a).reduce((x, y) => x + y, 0);
-  if (!total) {
+  const total = Object.values(a).reduce((s, v) => s + v, 0);
+
+  if (total === 0) {
     alert("Aún no hay tiempo suficiente");
     return;
   }
 
-  const focus = Math.round((a.trabajo / total) * 100);
-  alert(`🎯 Enfoque: ${focus}%`);
+  const pctTrabajo = Math.round((a.trabajo / total) * 100);
+
+  let estado = "";
+  let texto = "";
+
+  if (pctTrabajo >= 64) {
+    estado = "🟢 Enfocado";
+    texto = "Buen nivel de foco";
+  } else if (pctTrabajo >= 40) {
+    estado = "🟡 Atención";
+    texto = "Puedes mejorar el foco";
+  } else {
+    estado = "🔴 Disperso";
+    texto = "Demasiadas interrupciones";
+  }
+
+  alert(
+`🎯 Enfoque
+
+Trabajo: ${T.format(a.trabajo)}
+Teléfono: ${T.format(a.telefono)}
+Cliente: ${T.format(a.cliente)}
+Visitando: ${T.format(a.visitando)}
+Otros: ${T.format(a.otros)}
+
+Trabajo: ${pctTrabajo}%
+
+${estado}
+${texto}`
+  );
 };
 
 /* ========= REPORTE CSV ========= */
