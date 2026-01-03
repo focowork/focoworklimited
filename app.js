@@ -62,10 +62,8 @@ function formatSeconds(sec) {
 setInterval(() => {
   if (!currentActivity) return;
 
-  // reloj visual
   $("timer").textContent = T.format(T.getElapsed());
 
-  // acumulado diario
   if (dailyTime[currentActivity] !== undefined) {
     dailyTime[currentActivity] += 1;
     saveDaily();
@@ -107,11 +105,10 @@ $("newClient").onclick = () => {
   save();
 };
 
-/* ================= CAMBIAR CLIENTE (UX CORREGIDO) ================= */
+/* ================= CAMBIAR CLIENTE (FINAL) ================= */
 $("changeClient").onclick = () => {
-  if (!currentClient) return;
-
   const activos = activeClients();
+
   if (activos.length === 0) {
     alert("No hay clientes activos");
     return;
@@ -126,17 +123,28 @@ $("changeClient").onclick = () => {
   if (!sel || !activos[sel - 1]) return;
 
   const elegido = activos[sel - 1];
+
+  // Si aún no hay cliente actual
+  if (!currentClient) {
+    currentClient = elegido;
+    currentActivity = "trabajo";
+    T.start();
+
+    $("clientName").textContent = `Cliente: ${elegido.name}`;
+    $("activityName").textContent = "Trabajo";
+    return;
+  }
+
+  // Si elige el mismo, no hacemos nada
   if (elegido === currentClient) return;
 
-  // guardar tiempo del cliente actual
+  // Guardar tiempo del cliente actual
   const spent = T.stop();
   currentClient.activities[currentActivity] += spent;
 
-  // cambiar cliente
+  // Cambiar cliente
   currentClient = elegido;
   currentActivity = "trabajo";
-
-  // NO resetear el motor
   T.start();
 
   $("clientName").textContent = `Cliente: ${currentClient.name}`;
