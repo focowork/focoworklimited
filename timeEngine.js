@@ -1,44 +1,49 @@
 // timeEngine.js
-let startTime = null;
-let elapsed = 0;
-let interval = null;
+let engine = {
+  running: false,
+  startTime: 0,
+  currentActivity: null,
+  elapsedTotal: 0
+};
 
-export function startTimer(onTick) {
-  if (interval) return;
-
-  startTime = Date.now();
-
-  interval = setInterval(() => {
-    const now = Date.now();
-    const total = elapsed + (now - startTime);
-    onTick(total);
-  }, 1000);
+export function startClient() {
+  engine.running = true;
+  engine.startTime = Date.now();
+  engine.elapsedTotal = 0;
+  engine.currentActivity = null;
 }
 
-export function stopTimer() {
-  if (!interval) return;
-
-  elapsed += Date.now() - startTime;
-  clearInterval(interval);
-  interval = null;
+export function stopClient() {
+  if (!engine.running) return engine.elapsedTotal;
+  engine.elapsedTotal += Date.now() - engine.startTime;
+  engine.running = false;
+  return engine.elapsedTotal;
 }
 
-export function resetTimer() {
-  startTime = null;
-  elapsed = 0;
-  clearInterval(interval);
-  interval = null;
+export function switchActivity(activity, activitiesStore) {
+  if (!engine.running) return;
+
+  const now = Date.now();
+  const delta = now - engine.startTime;
+
+  if (engine.currentActivity) {
+    activitiesStore[engine.currentActivity] += delta;
+  }
+
+  engine.elapsedTotal += delta;
+  engine.startTime = now;
+  engine.currentActivity = activity;
 }
 
 export function getElapsed() {
-  if (!startTime) return elapsed;
-  return elapsed + (Date.now() - startTime);
+  if (!engine.running) return engine.elapsedTotal;
+  return engine.elapsedTotal + (Date.now() - engine.startTime);
 }
 
-export function formatTime(ms) {
-  const total = Math.floor(ms / 1000);
-  const h = String(Math.floor(total / 3600)).padStart(2, "0");
-  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const s = String(total % 60).padStart(2, "0");
+export function format(ms) {
+  const t = Math.floor(ms / 1000);
+  const h = String(Math.floor(t / 3600)).padStart(2, "0");
+  const m = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
+  const s = String(t % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
-}
+      }
