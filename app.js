@@ -15,6 +15,14 @@ let full = localStorage.getItem("fw_full") === "1";
 clients.forEach(c => c.active = false);
 save();
 
+/* ================= UI FULL ================= */
+window.addEventListener("DOMContentLoaded", () => {
+  if (full) {
+    const box = $("versionBox");
+    if (box) box.style.display = "none";
+  }
+});
+
 /* ============ TIEMPO DIARIO (ENFOQUE) ============ */
 let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   date: new Date().toISOString().slice(0, 10),
@@ -105,7 +113,7 @@ $("newClient").onclick = () => {
   save();
 };
 
-/* ================= CAMBIAR CLIENTE (FINAL) ================= */
+/* ================= CAMBIAR CLIENTE ================= */
 $("changeClient").onclick = () => {
   const activos = activeClients();
 
@@ -123,26 +131,13 @@ $("changeClient").onclick = () => {
   if (!sel || !activos[sel - 1]) return;
 
   const elegido = activos[sel - 1];
-
-  // Si aún no hay cliente actual
-  if (!currentClient) {
-    currentClient = elegido;
-    currentActivity = "trabajo";
-    T.start();
-
-    $("clientName").textContent = `Cliente: ${elegido.name}`;
-    $("activityName").textContent = "Trabajo";
-    return;
-  }
-
-  // Si elige el mismo, no hacemos nada
   if (elegido === currentClient) return;
 
-  // Guardar tiempo del cliente actual
-  const spent = T.stop();
-  currentClient.activities[currentActivity] += spent;
+  if (currentClient) {
+    const spent = T.stop();
+    currentClient.activities[currentActivity] += spent;
+  }
 
-  // Cambiar cliente
   currentClient = elegido;
   currentActivity = "trabajo";
   T.start();
@@ -196,17 +191,8 @@ document.querySelectorAll(".activity").forEach(btn => {
 
 /* ================= 🎯 ENFOQUE DIARIO ================= */
 $("focusBtn").onclick = () => {
-  const total =
-    dailyTime.trabajo +
-    dailyTime.telefono +
-    dailyTime.cliente +
-    dailyTime.visitando +
-    dailyTime.otros;
-
-  if (total === 0) {
-    alert("Aún no hay actividad registrada hoy.");
-    return;
-  }
+  const total = Object.values(dailyTime).slice(1).reduce((a, b) => a + b, 0);
+  if (total === 0) return alert("Aún no hay actividad registrada hoy.");
 
   const pctTrabajo = Math.round((dailyTime.trabajo / total) * 100);
 
