@@ -6,11 +6,11 @@
   <title>FocoWork</title>
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#0f172a" />
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
@@ -33,10 +33,10 @@
       <button class="activity" data-activity="otros">⚙️ Otros</button>
     </div>
 
-    <!-- ACCIONES -->
+    <!-- ACCIONES CLIENTE -->
     <div class="grid actions">
       <button id="newClient">➕ Nuevo</button>
-      <button id="changeClient">🔄 Cambiar</button>
+      <button id="changeClient">🔁 Cambiar</button>
       <button id="closeClient">✅ Cerrar</button>
     </div>
 
@@ -46,9 +46,10 @@
       <button id="todayBtn">📅 Hoy</button>
     </div>
 
-    <!-- INFO -->
+    <!-- PANEL INFO -->
     <div id="infoPanel" class="info-panel hidden">
       <div id="infoText"></div>
+      <button id="closeInfo">Cerrar</button>
     </div>
 
     <!-- BLOQUE VERSIÓN -->
@@ -64,13 +65,15 @@
         id="activationCode"
         type="text"
         placeholder="Introduce código de activación"
+        autocomplete="off"
       />
-      <button id="confirmActivation">Activar código</button>
+
+      <button id="applyCode">Activar código</button>
     </div>
 
   </div>
 
-  <!-- APP -->
-  <script type="module" src="/focoworklimited/app.js"></script>
+  <!-- ⚠️ ESTA LÍNEA ES CRÍTICA: NO TOCAR -->
+  <script type="module" src="./app.js"></script>
 </body>
-</html>
+                                   </html>
