@@ -5,21 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FocoWork</title>
 
+  <!-- PWA -->
   <link rel="manifest" href="/focoworklimited/manifest.json" />
   <meta name="theme-color" content="#0f172a" />
 
+  <!-- Estilos -->
   <link rel="stylesheet" href="/focoworklimited/styles.css" />
 </head>
 
 <body>
   <div class="app">
 
+    <!-- HEADER -->
     <div class="header">
       <div id="clientName">Sin cliente activo</div>
       <div id="activityName">—</div>
       <div id="timer">00:00:00</div>
     </div>
 
+    <!-- ACTIVIDADES -->
     <div class="grid activities">
       <button class="activity" data-activity="trabajo">🟦 Trabajo</button>
       <button class="activity" data-activity="telefono">📞 Teléfono</button>
@@ -28,28 +32,46 @@
       <button class="activity" data-activity="otros">⚙️ Otros</button>
     </div>
 
+    <!-- ACCIONES CLIENTE -->
     <div class="grid actions">
       <button id="newClient">➕ Nuevo</button>
+      <button id="changeClient">🔄 Cambiar</button>
       <button id="closeClient">✅ Cerrar</button>
     </div>
 
+    <!-- REPORTES -->
     <div class="grid reports">
       <button id="focusBtn">🎯 Enfoque</button>
       <button id="todayBtn">📅 Hoy</button>
     </div>
 
+    <!-- INFO PANEL -->
     <div id="infoPanel" class="info-panel hidden">
       <div id="infoText"></div>
     </div>
 
-    <div class="version-box">
-      🔒 <b>Versión de prueba</b><br>
-      Máx. 2 clientes activos<br><br>
+    <!-- BLOQUE VERSIÓN -->
+    <div id="versionBox" class="version-box">
+      <div class="lock">
+        🔒 <strong>Versión de prueba</strong><br />
+        Máximo 2 clientes activos
+      </div>
+
       <button id="activateFull">Activar versión completa</button>
+
+      <input
+        id="licenseInput"
+        placeholder="Introduce código de activación"
+        style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:none;"
+      />
+      <button id="licenseBtn" style="margin-top:8px">
+        Activar código
+      </button>
     </div>
 
   </div>
 
+  <!-- APP -->
   <script type="module" src="/focoworklimited/app.js"></script>
 </body>
-                                   </html>
+      </html>
