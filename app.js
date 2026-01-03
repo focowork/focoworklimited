@@ -5,7 +5,7 @@ const $ = id => document.getElementById(id);
 const MAX_FREE = 2;
 const WHATSAPP = "34649383847";
 
-/* ========= ESTADO ========= */
+/* ================= ESTADO ================= */
 let clients = JSON.parse(localStorage.getItem("fw_clients")) || [];
 let currentClient = null;
 let currentActivity = null;
@@ -15,8 +15,7 @@ let full = localStorage.getItem("fw_full") === "1";
 clients.forEach(c => c.active = false);
 save();
 
-/* ========= TIEMPO DIARIO (ENFOQUE) ========= */
-// segundos acumulados hoy
+/* ============ TIEMPO DIARIO (ENFOQUE) ============ */
 let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   date: new Date().toISOString().slice(0, 10),
   trabajo: 0,
@@ -26,7 +25,6 @@ let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   otros: 0
 };
 
-// reset automático si cambia el día
 const today = new Date().toISOString().slice(0, 10);
 if (dailyTime.date !== today) {
   dailyTime = {
@@ -40,17 +38,17 @@ if (dailyTime.date !== today) {
   localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
 }
 
-/* ========= UTIL ========= */
+/* ================= UTIL ================= */
 function save() {
   localStorage.setItem("fw_clients", JSON.stringify(clients));
 }
 
-function activeClients() {
-  return clients.filter(c => c.active);
-}
-
 function saveDaily() {
   localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
+}
+
+function activeClients() {
+  return clients.filter(c => c.active);
 }
 
 function formatSeconds(sec) {
@@ -60,21 +58,21 @@ function formatSeconds(sec) {
   return `${h}:${m}:${s}`;
 }
 
-/* ========= TIMER UI + ENFOQUE REALTIME ========= */
+/* ============ TIMER + ENFOQUE REALTIME ============ */
 setInterval(() => {
   if (!currentActivity) return;
 
   // reloj visual
   $("timer").textContent = T.format(T.getElapsed());
 
-  // enfoque diario
+  // acumulado diario
   if (dailyTime[currentActivity] !== undefined) {
     dailyTime[currentActivity] += 1;
     saveDaily();
   }
 }, 1000);
 
-/* ========= NUEVO CLIENTE ========= */
+/* ================= NUEVO CLIENTE ================= */
 $("newClient").onclick = () => {
   if (!full && activeClients().length >= MAX_FREE) {
     alert("Versión de prueba: máximo 2 clientes activos");
@@ -109,29 +107,36 @@ $("newClient").onclick = () => {
   save();
 };
 
-/* ========= CAMBIAR CLIENTE ========= */
+/* ================= CAMBIAR CLIENTE (UX CORREGIDO) ================= */
 $("changeClient").onclick = () => {
   if (!currentClient) return;
 
   const activos = activeClients();
-  if (activos.length < 2) {
-    alert("No hay otro cliente activo");
+  if (activos.length === 0) {
+    alert("No hay clientes activos");
     return;
   }
 
-  let msg = "Elige cliente:\n";
-  activos.forEach((c, i) => msg += `${i + 1}. ${c.name}\n`);
+  let msg = "Clientes activos:\n";
+  activos.forEach((c, i) => {
+    msg += `${i + 1}. ${c.name}${c === currentClient ? " (actual)" : ""}\n`;
+  });
 
   const sel = parseInt(prompt(msg), 10);
   if (!sel || !activos[sel - 1]) return;
 
+  const elegido = activos[sel - 1];
+  if (elegido === currentClient) return;
+
+  // guardar tiempo del cliente actual
   const spent = T.stop();
   currentClient.activities[currentActivity] += spent;
 
-  currentClient = activos[sel - 1];
+  // cambiar cliente
+  currentClient = elegido;
   currentActivity = "trabajo";
 
-  T.reset();
+  // NO resetear el motor
   T.start();
 
   $("clientName").textContent = `Cliente: ${currentClient.name}`;
@@ -140,7 +145,7 @@ $("changeClient").onclick = () => {
   save();
 };
 
-/* ========= CERRAR CLIENTE ========= */
+/* ================= CERRAR CLIENTE ================= */
 $("closeClient").onclick = () => {
   if (!currentClient) return;
 
@@ -165,7 +170,7 @@ $("closeClient").onclick = () => {
   save();
 };
 
-/* ========= ACTIVIDADES ========= */
+/* ================= ACTIVIDADES ================= */
 document.querySelectorAll(".activity").forEach(btn => {
   btn.onclick = () => {
     if (!currentClient) return;
@@ -181,7 +186,7 @@ document.querySelectorAll(".activity").forEach(btn => {
   };
 });
 
-/* ========= 🎯 ENFOQUE DIARIO ========= */
+/* ================= 🎯 ENFOQUE DIARIO ================= */
 $("focusBtn").onclick = () => {
   const total =
     dailyTime.trabajo +
@@ -215,7 +220,7 @@ Estado: ${estado}`
   );
 };
 
-/* ========= REPORTE CSV DIARIO ========= */
+/* ================= REPORTE CSV ================= */
 $("todayBtn").onclick = () => {
   let csv = "Cliente,Trabajo,Telefono,Cliente,Visitando,Otros,Total\n";
 
@@ -233,7 +238,7 @@ $("todayBtn").onclick = () => {
   a.click();
 };
 
-/* ========= FULL / WHATSAPP ========= */
+/* ================= FULL / WHATSAPP ================= */
 $("activateFull").onclick = () => {
   const msg = encodeURIComponent("Hola, quiero activar FocoWork FULL");
   window.open(`https://wa.me/${WHATSAPP}?text=${msg}`, "_blank");
