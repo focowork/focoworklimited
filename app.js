@@ -11,6 +11,10 @@ let currentClient = null;
 let currentActivity = null;
 let full = localStorage.getItem("fw_full") === "1";
 
+/* 🔧 RESETEO DE SESIÓN (CLAVE) */
+clients.forEach(c => c.active = false);
+save();
+
 /* ========= UTIL ========= */
 function save() {
   localStorage.setItem("fw_clients", JSON.stringify(clients));
@@ -152,9 +156,7 @@ $("focusBtn").onclick = () => {
 
   const pctTrabajo = Math.round((a.trabajo / total) * 100);
 
-  let estado = "";
-  let texto = "";
-
+  let estado, texto;
   if (pctTrabajo >= 64) {
     estado = "🟢 Enfocado";
     texto = "Buen nivel de foco";
