@@ -100,4 +100,22 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   updateUI();
+
+
+  // ⏱️ Refresco del temporizador (cada segundo)
+  setInterval(() => {
+    const { state } = getCurrentState();
+    if (!state.currentClientId) {
+      timerEl.textContent = "00:00:00";
+      return;
+    }
+
+    const seconds = Math.floor(state.elapsed / 1000);
+    const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
+    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+    const s = String(seconds % 60).padStart(2, "0");
+
+    timerEl.textContent = `${h}:${m}:${s}`;
+  }, 1000);
+
 });
