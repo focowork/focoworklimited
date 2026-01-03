@@ -11,11 +11,11 @@ let currentClient = null;
 let currentActivity = null;
 let full = localStorage.getItem("fw_full") === "1";
 
-/* 🔧 RESETEO DE SESIÓN */
+/* ================= LIMPIEZA SESIÓN ================= */
 clients.forEach(c => c.active = false);
 save();
 
-/* ================= UI FULL ================= */
+/* ================= OCULTAR BLOQUE FULL ================= */
 window.addEventListener("DOMContentLoaded", () => {
   if (full) {
     const box = $("versionBox");
@@ -23,7 +23,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-/* ============ TIEMPO DIARIO (ENFOQUE) ============ */
+/* ============ ENFOQUE DIARIO ================= */
 let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   date: new Date().toISOString().slice(0, 10),
   trabajo: 0,
@@ -33,26 +33,25 @@ let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
   otros: 0
 };
 
-const today = new Date().toISOString().slice(0, 10);
-if (dailyTime.date !== today) {
-  dailyTime = {
-    date: today,
-    trabajo: 0,
-    telefono: 0,
-    cliente: 0,
-    visitando: 0,
-    otros: 0
-  };
-  localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
+/* ============ RESET DIARIO AUTOMÁTICO ================= */
+function checkDailyReset() {
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (dailyTime.date !== today) {
+    dailyTime.date = today;
+    dailyTime.trabajo = 0;
+    dailyTime.telefono = 0;
+    dailyTime.cliente = 0;
+    dailyTime.visitando = 0;
+    dailyTime.otros = 0;
+
+    localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
+  }
 }
 
 /* ================= UTIL ================= */
 function save() {
   localStorage.setItem("fw_clients", JSON.stringify(clients));
-}
-
-function saveDaily() {
-  localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
 }
 
 function activeClients() {
@@ -66,15 +65,17 @@ function formatSeconds(sec) {
   return `${h}:${m}:${s}`;
 }
 
-/* ============ TIMER + ENFOQUE REALTIME ============ */
+/* ============ RELOJ + ENFOQUE ================= */
 setInterval(() => {
+  checkDailyReset();
+
   if (!currentActivity) return;
 
   $("timer").textContent = T.format(T.getElapsed());
 
   if (dailyTime[currentActivity] !== undefined) {
     dailyTime[currentActivity] += 1;
-    saveDaily();
+    localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
   }
 }, 1000);
 
@@ -116,16 +117,12 @@ $("newClient").onclick = () => {
 /* ================= CAMBIAR CLIENTE ================= */
 $("changeClient").onclick = () => {
   const activos = activeClients();
-
-  if (activos.length === 0) {
-    alert("No hay clientes activos");
-    return;
-  }
+  if (activos.length === 0) return alert("No hay clientes activos");
 
   let msg = "Clientes activos:\n";
-  activos.forEach((c, i) => {
-    msg += `${i + 1}. ${c.name}${c === currentClient ? " (actual)" : ""}\n`;
-  });
+  activos.forEach((c, i) =>
+    msg += `${i + 1}. ${c.name}${c === currentClient ? " (actual)" : ""}\n`
+  );
 
   const sel = parseInt(prompt(msg), 10);
   if (!sel || !activos[sel - 1]) return;
@@ -189,16 +186,22 @@ document.querySelectorAll(".activity").forEach(btn => {
   };
 });
 
-/* ================= 🎯 ENFOQUE DIARIO ================= */
+/* ================= 🎯 ENFOQUE ================= */
 $("focusBtn").onclick = () => {
-  const total = Object.values(dailyTime).slice(1).reduce((a, b) => a + b, 0);
-  if (total === 0) return alert("Aún no hay actividad registrada hoy.");
+  const total =
+    dailyTime.trabajo +
+    dailyTime.telefono +
+    dailyTime.cliente +
+    dailyTime.visitando +
+    dailyTime.otros;
 
-  const pctTrabajo = Math.round((dailyTime.trabajo / total) * 100);
+  if (total === 0) return alert("Aún no hay actividad hoy.");
+
+  const pct = Math.round((dailyTime.trabajo / total) * 100);
 
   let estado = "🟢 Enfocado";
-  if (pctTrabajo < 64) estado = "🟡 Atención";
-  if (pctTrabajo < 40) estado = "🔴 Disperso";
+  if (pct < 64) estado = "🟡 Atención";
+  if (pct < 40) estado = "🔴 Disperso";
 
   alert(
 `🎯 Enfoque de hoy
@@ -209,30 +212,12 @@ Cliente: ${formatSeconds(dailyTime.cliente)}
 Visitando: ${formatSeconds(dailyTime.visitando)}
 Otros: ${formatSeconds(dailyTime.otros)}
 
-Trabajo: ${pctTrabajo}%
+Trabajo: ${pct}%
 Estado: ${estado}`
   );
 };
 
-/* ================= REPORTE CSV ================= */
-$("todayBtn").onclick = () => {
-  let csv = "Cliente,Trabajo,Telefono,Cliente,Visitando,Otros,Total\n";
-
-  clients.forEach(c => {
-    const t = Object.values(c.activities).reduce((x, y) => x + y, 0);
-    if (!t) return;
-
-    csv += `${c.name},${T.format(c.activities.trabajo)},${T.format(c.activities.telefono)},${T.format(c.activities.cliente)},${T.format(c.activities.visitando)},${T.format(c.activities.otros)},${T.format(t)}\n`;
-  });
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `focowork_${dailyTime.date}.csv`;
-  a.click();
-};
-
-/* ================= FULL / WHATSAPP ================= */
+/* ================= FULL ================= */
 $("activateFull").onclick = () => {
   const msg = encodeURIComponent("Hola, quiero activar FocoWork FULL");
   window.open(`https://wa.me/${WHATSAPP}?text=${msg}`, "_blank");
