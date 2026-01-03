@@ -6,11 +6,11 @@
   <title>FocoWork</title>
 
   <!-- PWA -->
-  <link rel="manifest" href="./manifest.json" />
+  <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0f172a" />
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
@@ -45,12 +45,12 @@
       <button id="todayBtn">📅 Hoy</button>
     </div>
 
-    <!-- INFO PANEL -->
+    <!-- INFO -->
     <div id="infoPanel" class="info-panel hidden">
       <div id="infoText"></div>
     </div>
 
-    <!-- BLOQUE VERSIÓN -->
+    <!-- VERSIÓN -->
     <div id="versionBox" class="version-box">
       <div class="lock">
         🔒 <strong>Versión de prueba</strong><br />
@@ -61,15 +61,14 @@
 
       <input
         id="activationCode"
+        type="text"
         placeholder="Introduce código de activación"
-        style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:none;"
       />
-
     </div>
 
   </div>
 
-  <!-- APP (RUTA CORRECTA) -->
-  <script type="module" src="./app.js"></script>
+  <!-- 🔴 ESTA LÍNEA ES CRÍTICA -->
+  <script type="module" src="app.js"></script>
 </body>
-</html>
+      </html>
