@@ -1,123 +1,134 @@
-import * as T from "/focoworklimited/timeEngine.js";
+/**********************
+ * FocoWork – app.js
+ * Versión estable FINAL
+ **********************/
 
-const $ = id => document.getElementById(id);
-
-const MAX_FREE = 2;
-const WHATSAPP = "34649383847";
-
-/* ================= ESTADO ================= */
-let clients = JSON.parse(localStorage.getItem("fw_clients")) || [];
-let currentClient = null;
-let currentActivity = null;
-let full = localStorage.getItem("fw_full") === "1";
-
-/* ================= LIMPIEZA SESIÓN ================= */
-clients.forEach(c => c.active = false);
-save();
-
-/* ================= UI FULL ================= */
-window.addEventListener("DOMContentLoaded", () => {
-  if (full) {
-    const box = $("versionBox");
-    if (box) box.style.display = "none";
-  }
-
-  // Crear zona de total de cliente bajo el reloj (sin tocar HTML)
-  const timer = $("timer");
-  if (timer && !$("clientTotal")) {
-    const div = document.createElement("div");
-    div.id = "clientTotal";
-    div.style.fontSize = "0.85em";
-    div.style.opacity = "0.8";
-    div.style.marginTop = "4px";
-    timer.after(div);
-  }
-});
-
-/* ================= ENFOQUE DIARIO ================= */
-let dailyTime = JSON.parse(localStorage.getItem("fw_dailyTime")) || {
-  date: new Date().toISOString().slice(0, 10),
-  trabajo: 0,
-  telefono: 0,
-  cliente: 0,
-  visitando: 0,
-  otros: 0
-};
-
-/* ================= RESET DIARIO ================= */
-function checkDailyReset() {
-  const today = new Date().toISOString().slice(0, 10);
-  if (dailyTime.date !== today) {
-    dailyTime = {
-      date: today,
+// ---------- ESTADO GLOBAL ----------
+let state = {
+  clients: [],
+  activeClientId: null,
+  currentActivity: null,
+  sessionStart: null,
+  timerInterval: null,
+  isFull: false,
+  dailyFocus: {
+    date: null,
+    activities: {
       trabajo: 0,
       telefono: 0,
       cliente: 0,
       visitando: 0,
       otros: 0
+    }
+  }
+};
+
+// ---------- UTILIDADES ----------
+const $ = id => document.getElementById(id);
+
+const now = () => Date.now();
+
+const formatTime = ms => {
+  const s = Math.floor(ms / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${sec}`;
+};
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+// ---------- STORAGE ----------
+function saveState() {
+  localStorage.setItem("focowork_state", JSON.stringify(state));
+}
+
+function loadState() {
+  const raw = localStorage.getItem("focowork_state");
+  if (!raw) return;
+  state = JSON.parse(raw);
+}
+
+// ---------- DAILY RESET ENFOQUE ----------
+function resetDailyFocusIfNeeded() {
+  const today = todayKey();
+  if (state.dailyFocus.date !== today) {
+    state.dailyFocus = {
+      date: today,
+      activities: {
+        trabajo: 0,
+        telefono: 0,
+        cliente: 0,
+        visitando: 0,
+        otros: 0
+      }
     };
-    localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
+    saveState();
   }
 }
 
-/* ================= UTIL ================= */
-function save() {
-  localStorage.setItem("fw_clients", JSON.stringify(clients));
-}
-
-function activeClients() {
-  return clients.filter(c => c.active);
-}
-
-function formatSeconds(sec) {
-  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-  const s = String(sec % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
+// ---------- CLIENT HELPERS ----------
+function getActiveClient() {
+  return state.clients.find(c => c.id === state.activeClientId);
 }
 
 function getClientTotal(client) {
-  if (!client) return 0;
   return Object.values(client.activities).reduce((a, b) => a + b, 0);
 }
 
-function updateClientTotalUI() {
-  const el = $("clientTotal");
-  if (!el || !currentClient) {
-    if (el) el.textContent = "";
-    return;
+// ---------- TIME CLOSURE (CLAVE DEL SISTEMA) ----------
+function closeCurrentSession() {
+  if (!state.sessionStart || !state.currentActivity) return;
+
+  const elapsed = now() - state.sessionStart;
+
+  // Guardar en cliente activo
+  const client = getActiveClient();
+  if (client) {
+    client.activities[state.currentActivity] += elapsed;
   }
-  el.textContent = `Total cliente: ${formatSeconds(getClientTotal(currentClient))}`;
+
+  // Guardar en enfoque diario
+  state.dailyFocus.activities[state.currentActivity] += elapsed;
+
+  state.sessionStart = null;
+  saveState();
 }
 
-/* ================= RELOJ + ENFOQUE ================= */
-setInterval(() => {
-  checkDailyReset();
+// ---------- TIMER ----------
+function startTimer(activity) {
+  closeCurrentSession();
+  state.currentActivity = activity;
+  state.sessionStart = now();
 
-  if (!currentActivity) return;
+  if (state.timerInterval) clearInterval(state.timerInterval);
 
-  $("timer").textContent = T.format(T.getElapsed());
+  state.timerInterval = setInterval(updateUI, 1000);
+  saveState();
+}
 
-  if (dailyTime[currentActivity] !== undefined) {
-    dailyTime[currentActivity] += 1;
-    localStorage.setItem("fw_dailyTime", JSON.stringify(dailyTime));
-  }
+function stopTimer() {
+  closeCurrentSession();
+  state.currentActivity = null;
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  updateUI();
+}
 
-  updateClientTotalUI();
-}, 1000);
-
-/* ================= NUEVO CLIENTE ================= */
-$("newClient").onclick = () => {
-  if (!full && activeClients().length >= MAX_FREE) {
+// ---------- CLIENT ACTIONS ----------
+function newClient() {
+  if (!state.isFull && state.clients.filter(c => c.active).length >= 2) {
     alert("Versión de prueba: máximo 2 clientes activos");
     return;
   }
 
-  const name = prompt("Nombre del cliente:");
+  const name = prompt("Nombre del cliente");
   if (!name) return;
 
-  currentClient = {
-    id: Date.now(),
+  closeCurrentSession();
+
+  const client = {
+    id: crypto.randomUUID(),
     name,
     active: true,
     activities: {
@@ -129,143 +140,152 @@ $("newClient").onclick = () => {
     }
   };
 
-  clients.push(currentClient);
-  currentActivity = "trabajo";
+  state.clients.push(client);
+  state.activeClientId = client.id;
+  startTimer("trabajo");
+  saveState();
+  updateUI();
+}
 
-  T.reset();
-  T.start();
-
-  $("clientName").textContent = `Cliente: ${name}`;
-  $("activityName").textContent = "Trabajo";
-  updateClientTotalUI();
-
-  save();
-};
-
-/* ================= CAMBIAR CLIENTE ================= */
-$("changeClient").onclick = () => {
-  const activos = activeClients();
-  if (activos.length === 0) return alert("No hay clientes activos");
-
-  let msg = "Clientes activos:\n";
-  activos.forEach((c, i) =>
-    msg += `${i + 1}. ${c.name}${c === currentClient ? " (actual)" : ""}\n`
-  );
-
-  const sel = parseInt(prompt(msg), 10);
-  if (!sel || !activos[sel - 1]) return;
-
-  const elegido = activos[sel - 1];
-  if (elegido === currentClient) return;
-
-  if (currentClient) {
-    const spent = T.stop();
-    currentClient.activities[currentActivity] += spent;
+function changeClient() {
+  const actives = state.clients.filter(c => c.active);
+  if (actives.length === 0) {
+    alert("No hay clientes activos");
+    return;
   }
 
-  currentClient = elegido;
-  currentActivity = "trabajo";
+  closeCurrentSession();
 
-  T.reset();
-  T.start();
+  const list = actives
+    .map((c, i) => `${i + 1}. ${c.name}`)
+    .join("\n");
 
-  $("clientName").textContent = `Cliente: ${currentClient.name}`;
-  $("activityName").textContent = "Trabajo";
-  updateClientTotalUI();
+  const idx = parseInt(prompt("Selecciona cliente:\n" + list), 10) - 1;
+  if (isNaN(idx) || !actives[idx]) return;
 
-  save();
-};
+  state.activeClientId = actives[idx].id;
+  startTimer("trabajo");
+  saveState();
+  updateUI();
+}
 
-/* ================= CERRAR CLIENTE ================= */
-$("closeClient").onclick = () => {
-  if (!currentClient) return;
+function closeClient() {
+  const client = getActiveClient();
+  if (!client) return;
 
-  const spent = T.stop();
-  currentClient.activities[currentActivity] += spent;
-  currentClient.active = false;
+  closeCurrentSession();
+  client.active = false;
+  alert(
+    `Cliente: ${client.name}\nTiempo total: ${formatTime(
+      getClientTotal(client)
+    )}`
+  );
 
-  const total = getClientTotal(currentClient);
+  state.activeClientId = null;
+  state.currentActivity = null;
+  updateUI();
+  saveState();
+}
 
-  $("infoPanel").classList.remove("hidden");
-  $("infoText").textContent =
-    `Cliente: ${currentClient.name}\nTiempo total: ${formatSeconds(total)}`;
+// ---------- ENFOQUE ----------
+function showFocus() {
+  resetDailyFocusIfNeeded();
 
-  currentClient = null;
-  currentActivity = null;
+  const total = Object.values(state.dailyFocus.activities).reduce(
+    (a, b) => a + b,
+    0
+  );
 
-  $("clientName").textContent = "Sin cliente activo";
-  $("activityName").textContent = "—";
-  $("timer").textContent = "00:00:00";
-  updateClientTotalUI();
+  if (total === 0) {
+    alert("Aún no hay datos de enfoque hoy");
+    return;
+  }
 
-  save();
-};
-
-/* ================= ACTIVIDADES ================= */
-document.querySelectorAll(".activity").forEach(btn => {
-  btn.onclick = () => {
-    if (!currentClient) return;
-
-    const spent = T.stop();
-    currentClient.activities[currentActivity] += spent;
-
-    currentActivity = btn.dataset.activity;
-    $("activityName").textContent = btn.textContent;
-
-    T.reset();
-    T.start();
-    updateClientTotalUI();
-
-    save();
-  };
-});
-
-/* ================= 🎯 ENFOQUE ================= */
-$("focusBtn").onclick = () => {
-  const total =
-    dailyTime.trabajo +
-    dailyTime.telefono +
-    dailyTime.cliente +
-    dailyTime.visitando +
-    dailyTime.otros;
-
-  if (total === 0) return alert("Aún no hay actividad hoy.");
-
-  const pct = Math.round((dailyTime.trabajo / total) * 100);
+  const trabajo = state.dailyFocus.activities.trabajo;
+  const pct = Math.round((trabajo / total) * 100);
 
   let estado = "🟢 Enfocado";
-  if (pct < 64) estado = "🟡 Atención";
-  if (pct < 40) estado = "🔴 Disperso";
+  if (pct < 64) estado = "🔴 Disperso";
+  else if (pct < 75) estado = "🟡 Atención";
 
   alert(
-`🎯 Enfoque de hoy
-
-Trabajo: ${formatSeconds(dailyTime.trabajo)}
-Teléfono: ${formatSeconds(dailyTime.telefono)}
-Cliente: ${formatSeconds(dailyTime.cliente)}
-Visitando: ${formatSeconds(dailyTime.visitando)}
-Otros: ${formatSeconds(dailyTime.otros)}
-
-Trabajo: ${pct}%
-Estado: ${estado}`
+    `🎯 Enfoque diario\n\n` +
+      `Trabajo: ${formatTime(trabajo)}\n` +
+      `Teléfono: ${formatTime(state.dailyFocus.activities.telefono)}\n` +
+      `Cliente: ${formatTime(state.dailyFocus.activities.cliente)}\n` +
+      `Visitando: ${formatTime(state.dailyFocus.activities.visitando)}\n` +
+      `Otros: ${formatTime(state.dailyFocus.activities.otros)}\n\n` +
+      `Trabajo: ${pct}%\nEstado: ${estado}`
   );
-};
+}
 
-/* ================= FULL ================= */
-$("activateFull").onclick = () => {
-  const msg = encodeURIComponent("Hola, quiero activar FocoWork FULL");
-  window.open(`https://wa.me/${WHATSAPP}?text=${msg}`, "_blank");
-};
+// ---------- UI ----------
+function updateUI() {
+  const client = getActiveClient();
 
-$("licenseBtn").onclick = () => {
-  const code = $("licenseInput").value.trim();
-  if (!code) return alert("Introduce un código");
+  $("clientName").textContent = client
+    ? `Cliente: ${client.name}`
+    : "Sin cliente activo";
 
-  if (code.startsWith("FW-FULL-")) {
-    localStorage.setItem("fw_full", "1");
-    alert("Versión completa activada");
-    location.reload();
+  $("activityName").textContent = state.currentActivity
+    ? state.currentActivity.charAt(0).toUpperCase() +
+      state.currentActivity.slice(1)
+    : "—";
+
+  if (state.sessionStart) {
+    $("timer").textContent = formatTime(now() - state.sessionStart);
   } else {
-    alert("Código no válido");
+    $("timer").textContent = "00:00:00";
   }
-};
+
+  if (client) {
+    let totalEl = $("totalClient");
+    if (!totalEl) {
+      totalEl = document.createElement("div");
+      totalEl.id = "totalClient";
+      totalEl.style.opacity = "0.7";
+      totalEl.style.fontSize = "14px";
+      $("timer").after(totalEl);
+    }
+    totalEl.textContent =
+      "Total cliente: " + formatTime(getClientTotal(client));
+  } else {
+    const el = $("totalClient");
+    if (el) el.remove();
+  }
+
+  $("versionBox").style.display = state.isFull ? "none" : "block";
+}
+
+// ---------- ACTIVACIÓN FULL ----------
+function activateFull() {
+  const input = $("activationCode").value.trim();
+  if (input === "FOCOWORK-FULL-2024") {
+    state.isFull = true;
+    saveState();
+    updateUI();
+    alert("Versión completa activada");
+  } else {
+    alert("Código incorrecto");
+  }
+}
+
+// ---------- EVENTOS ----------
+document.addEventListener("DOMContentLoaded", () => {
+  loadState();
+  resetDailyFocusIfNeeded();
+
+  document.querySelectorAll(".activity").forEach(btn => {
+    btn.addEventListener("click", () =>
+      startTimer(btn.dataset.activity)
+    );
+  });
+
+  $("newClient").onclick = newClient;
+  $("changeClient").onclick = changeClient;
+  $("closeClient").onclick = closeClient;
+  $("focusBtn").onclick = showFocus;
+  $("activateFull").onclick = activateFull;
+
+  updateUI();
+});
