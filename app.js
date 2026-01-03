@@ -1,3 +1,4 @@
+console.log("APP.JS CARGADO");
 });.f/*************************************************
  * FocoWork – app.js DEFINITIVO
  * Núcleo estable y coherente
