@@ -1,116 +1,138 @@
-import {
-  loadState,
-  saveState,
-  loadClients,
-  saveClients,
-  loadBlocks,
-  saveBlocks,
-  loadLicense
-} from "./storage.js";
+// ===============================
+// FOCO WORK — TIME ENGINE
+// ===============================
 
-let state = loadState();
-let clients = loadClients();
-let blocks = loadBlocks();
+let state = {
+  currentClientId: null,
+  currentActivity: null,
+  elapsed: 0,              // tiempo total del cliente actual
+  lastTick: null           // timestamp del último tick
+};
 
+let clients = [];
+let blocks = [];
+
+// ===============================
+// UTILIDADES
+// ===============================
 function now() {
   return Date.now();
 }
 
-function generateId() {
-  return crypto.randomUUID();
+function save() {
+  localStorage.setItem(
+    "focowork_engine",
+    JSON.stringify({ state, clients, blocks })
+  );
 }
 
-function getCurrentBlock() {
-  return blocks.find(b => b.id === state.currentBlockId);
+function load() {
+  const saved = localStorage.getItem("focowork_engine");
+  if (!saved) return;
+
+  const data = JSON.parse(saved);
+  state = data.state;
+  clients = data.clients;
+  blocks = data.blocks;
 }
 
-function closeCurrentBlock() {
-  if (!state.currentBlockId) return;
+// ===============================
+// TICK GLOBAL (CORAZÓN)
+// ===============================
+setInterval(() => {
+  if (!state.currentClientId || !state.currentActivity) return;
 
-  const block = getCurrentBlock();
-  if (!block || block.fin) return;
+  const t = now();
 
-  block.fin = now();
-  saveBlocks(blocks);
-
-  state.currentBlockId = null;
-  saveState(state);
-}
-
-function startBlock(clienteId, actividad) {
-  const block = {
-    id: generateId(),
-    cliente_id: clienteId,
-    actividad,
-    inicio: now(),
-    fin: null
-  };
-
-  blocks.push(block);
-  saveBlocks(blocks);
-
-  state.currentBlockId = block.id;
-  saveState(state);
-}
-
-export function newClient(nombre) {
-  const license = loadLicense();
-  const activos = clients.filter(c => c.estado === "abierto").length;
-
-  // 🔒 LÍMITE SOLO EN TRIAL
-  if (license === "trial" && activos >= 2) {
-    alert("Versión de prueba: máximo 2 clientes activos");
+  if (!state.lastTick) {
+    state.lastTick = t;
     return;
   }
 
-  closeCurrentBlock();
+  const diff = t - state.lastTick;
+  state.lastTick = t;
+  state.elapsed += diff;
 
-  const client = {
-    id: generateId(),
-    nombre,
-    estado: "abierto",
-    creado_en: now(),
-    cerrado_en: null
-  };
+  save();
+}, 1000);
 
-  clients.push(client);
-  saveClients(clients);
+// ===============================
+// CLIENTES
+// ===============================
+export function newClient(name) {
+  const id = crypto.randomUUID();
 
-  state.currentClientId = client.id;
-  saveState(state);
+  clients.push({
+    id,
+    nombre: name,
+    estado: "abierto"
+  });
 
-  startBlock(client.id, "trabajo");
+  state.currentClientId = id;
+  state.currentActivity = null;
+  state.elapsed = 0;
+  state.lastTick = null;
+
+  save();
 }
 
-export function changeActivity(actividad) {
-  if (!state.currentClientId) return;
-  closeCurrentBlock();
-  startBlock(state.currentClientId, actividad);
-}
+export function changeClient(id) {
+  const client = clients.find(c => c.id === id && c.estado === "abierto");
+  if (!client) return;
 
-export function changeClient(clienteId) {
-  closeCurrentBlock();
-  state.currentClientId = clienteId;
-  saveState(state);
-  startBlock(clienteId, "trabajo");
+  state.currentClientId = id;
+  state.currentActivity = null;
+  state.elapsed = 0;
+  state.lastTick = null;
+
+  save();
 }
 
 export function closeClient() {
-  if (!state.currentClientId) return;
-
-  closeCurrentBlock();
-
   const client = clients.find(c => c.id === state.currentClientId);
   if (!client) return;
 
   client.estado = "cerrado";
-  client.cerrado_en = now();
-  saveClients(clients);
 
   state.currentClientId = null;
-  saveState(state);
+  state.currentActivity = null;
+  state.elapsed = 0;
+  state.lastTick = null;
+
+  save();
 }
 
-export function getCurrentState() {
-  return { state, clients, blocks };
+// ===============================
+// ACTIVIDADES
+// ===============================
+export function changeActivity(activity) {
+  if (!state.currentClientId) return;
+
+  state.currentActivity = activity;
+  state.lastTick = now();
+
+  blocks.push({
+    cliente_id: state.currentClientId,
+    actividad: activity,
+    inicio: state.lastTick,
+    fin: null
+  });
+
+  save();
 }
+
+// ===============================
+// ESTADO PÚBLICO
+// ===============================
+export function getCurrentState() {
+  return {
+    state: { ...state },
+    clients: [...clients],
+    blocks: [...blocks]
+  };
+}
+
+// ===============================
+// INIT
+// ===============================
+load();
