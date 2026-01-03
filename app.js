@@ -1,93 +1,102 @@
+import {
+  newClient,
+  changeActivity,
+  changeClient,
+  closeClient,
+  getCurrentState
+} from "./timeEngine.js";
+
 // ===============================
 // CONFIG
 // ===============================
 const MAX_FREE_CLIENTS = 2;
 const WHATSAPP_PHONE = "34649383847";
-const LICENSE_KEY = "focowork_full";
 
 // ===============================
-// STATE
+// DOM
 // ===============================
-let state = {
-  currentClientId: null,
-  currentActivity: null,
-  elapsed: 0,
-  lastTick: null,
-  clients: []
-};
+const clientNameEl = document.getElementById("clientName");
+const activityNameEl = document.getElementById("activityName");
+const timerEl = document.getElementById("timer");
+
+const activityButtons = document.querySelectorAll(".activity");
+
+const newClientBtn = document.getElementById("newClient");
+const changeClientBtn = document.getElementById("changeClient");
+const closeClientBtn = document.getElementById("closeClient");
+
+const focusBtn = document.getElementById("focusBtn");
+const todayBtn = document.getElementById("todayBtn");
+
+const infoPanel = document.getElementById("infoPanel");
+const infoText = document.getElementById("infoText");
 
 // ===============================
 // HELPERS
 // ===============================
-const $ = id => document.getElementById(id);
-
 function isFullVersion() {
-  return localStorage.getItem(LICENSE_KEY) === "1";
-}
-
-function saveState() {
-  localStorage.setItem("focowork_state", JSON.stringify(state));
-}
-
-function loadState() {
-  const saved = localStorage.getItem("focowork_state");
-  if (saved) state = JSON.parse(saved);
+  return localStorage.getItem("focowork_full") === "1";
 }
 
 function formatTime(ms) {
-  const total = Math.floor(ms / 1000);
-  const h = String(Math.floor(total / 3600)).padStart(2, "0");
-  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const s = String(total % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
-
-function activeClientsCount() {
-  return state.clients.filter(c => !c.closed).length;
+  const s = Math.floor(ms / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${sec}`;
 }
 
 // ===============================
 // UI UPDATE
 // ===============================
 function updateUI() {
-  if (!state.currentClientId) {
-    $("clientName").textContent = "Sin cliente activo";
-    $("activityName").textContent = "—";
-    $("timer").textContent = "00:00:00";
-    return;
-  }
+  const { state, clients } = getCurrentState();
+  const client = clients.find(c => c.id === state.currentClientId);
 
-  const client = state.clients.find(c => c.id === state.currentClientId);
-  $("clientName").textContent = `Cliente: ${client.name}`;
-  $("activityName").textContent = state.currentActivity || "—";
-  $("timer").textContent = formatTime(state.elapsed);
+  clientNameEl.textContent = client
+    ? `Cliente: ${client.nombre}`
+    : "Sin cliente activo";
+
+  activityNameEl.textContent = state.currentActivity
+    ? `Actividad: ${state.currentActivity}`
+    : "—";
 }
 
 // ===============================
-// TIMER LOOP
+// TIMER (REFRESCO)
 // ===============================
 setInterval(() => {
-  if (!state.currentClientId || !state.currentActivity) return;
+  const { state } = getCurrentState();
 
-  const now = Date.now();
-  if (!state.lastTick) {
-    state.lastTick = now;
+  if (!state.currentClientId) {
+    timerEl.textContent = "00:00:00";
     return;
   }
 
-  const diff = now - state.lastTick;
-  state.lastTick = now;
-  state.elapsed += diff;
-
-  saveState();
-  updateUI();
+  timerEl.textContent = formatTime(state.elapsed || 0);
 }, 1000);
 
 // ===============================
-// CLIENT ACTIONS
+// ACTIVIDADES
 // ===============================
-$("newClient").onclick = () => {
-  if (!isFullVersion() && activeClientsCount() >= MAX_FREE_CLIENTS) {
+activityButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const { state } = getCurrentState();
+    if (!state.currentClientId) return;
+
+    changeActivity(btn.dataset.activity);
+    updateUI();
+  });
+});
+
+// ===============================
+// CLIENTES
+// ===============================
+newClientBtn.onclick = () => {
+  const { clients } = getCurrentState();
+  const activos = clients.filter(c => c.estado === "abierto");
+
+  if (!isFullVersion() && activos.length >= MAX_FREE_CLIENTS) {
     alert("Versión de prueba: máximo 2 clientes activos.");
     return;
   }
@@ -95,110 +104,98 @@ $("newClient").onclick = () => {
   const name = prompt("Nombre del cliente:");
   if (!name) return;
 
-  const id = "C-" + Date.now();
-
-  state.clients.push({
-    id,
-    name,
-    closed: false
-  });
-
-  state.currentClientId = id;
-  state.currentActivity = null;
-  state.elapsed = 0;
-  state.lastTick = null;
-
-  saveState();
+  newClient(name.trim());
+  changeActivity("trabajo");
   updateUI();
 };
 
-$("closeClient").onclick = () => {
-  if (!state.currentClientId) return;
+changeClientBtn.onclick = () => {
+  const { clients } = getCurrentState();
+  const activos = clients.filter(c => c.estado === "abierto");
 
-  const client = state.clients.find(c => c.id === state.currentClientId);
-  client.closed = true;
-
-  state.currentClientId = null;
-  state.currentActivity = null;
-  state.elapsed = 0;
-  state.lastTick = null;
-
-  saveState();
-  updateUI();
-};
-
-$("changeClient").onclick = () => {
-  const active = state.clients.filter(c => !c.closed);
-  if (!active.length) return alert("No hay clientes activos");
-
-  const names = active.map(c => c.name).join("\n");
-  const chosen = prompt("Clientes activos:\n" + names);
-  const found = active.find(c => c.name === chosen);
-  if (!found) return;
-
-  state.currentClientId = found.id;
-  state.currentActivity = null;
-  state.elapsed = 0;
-  state.lastTick = null;
-
-  saveState();
-  updateUI();
-};
-
-// ===============================
-// ACTIVITIES
-// ===============================
-document.querySelectorAll(".activity").forEach(btn => {
-  btn.onclick = () => {
-    if (!state.currentClientId) return alert("No hay cliente activo");
-
-    state.currentActivity = btn.dataset.activity;
-    state.lastTick = Date.now();
-
-    saveState();
-    updateUI();
-  };
-});
-
-// ===============================
-// LICENSE / FULL VERSION
-// ===============================
-$("activateFullBtn")?.addEventListener("click", () => {
-  const deviceId =
-    localStorage.getItem("focowork_id") ||
-    (() => {
-      const id = "FW-" + Math.random().toString(36).slice(2, 10).toUpperCase();
-      localStorage.setItem("focowork_id", id);
-      return id;
-    })();
-
-  const text = encodeURIComponent(
-    `Hola, quiero activar FocoWork.\nID: ${deviceId}`
-  );
-
-  window.open(
-    `https://wa.me/${WHATSAPP_PHONE}?text=${text}`,
-    "_blank"
-  );
-
-  $("licensePanel")?.classList.remove("hidden");
-});
-
-$("licenseConfirm")?.addEventListener("click", () => {
-  const input = $("licenseInput").value.trim();
-  const msg = $("licenseMsg");
-
-  if (input.startsWith("FW-FULL-") && input.length >= 12) {
-    localStorage.setItem(LICENSE_KEY, "1");
-    msg.textContent = "✅ Versión completa activada";
-    setTimeout(() => location.reload(), 1000);
-  } else {
-    msg.textContent = "❌ Código no válido";
+  if (!activos.length) {
+    alert("No hay clientes activos");
+    return;
   }
-});
+
+  const list = activos
+    .map((c, i) => `${i + 1}. ${c.nombre}`)
+    .join("\n");
+
+  const choice = parseInt(prompt("Clientes activos:\n" + list), 10) - 1;
+  if (!activos[choice]) return;
+
+  changeClient(activos[choice].id);
+  changeActivity("trabajo");
+  updateUI();
+};
+
+closeClientBtn.onclick = () => {
+  const { state, clients } = getCurrentState();
+  const client = clients.find(c => c.id === state.currentClientId);
+  if (!client) return;
+
+  closeClient();
+  infoText.innerHTML = `Cliente: ${client.nombre}`;
+  infoPanel.classList.remove("hidden");
+
+  updateUI();
+};
+
+// ===============================
+// ENFOQUE (SIMPLE)
+// ===============================
+focusBtn.onclick = () => {
+  alert("Modo enfoque activo (funcionalidad básica).");
+};
+
+// ===============================
+// REPORTE HOY (SIMPLE)
+// ===============================
+todayBtn.onclick = () => {
+  alert("Reporte diario disponible en versión completa.");
+};
+
+// ===============================
+// PANEL VERSIÓN DE PRUEBA
+// ===============================
+if (!isFullVersion()) {
+  const panel = document.createElement("div");
+  panel.style.marginTop = "16px";
+  panel.style.padding = "12px";
+  panel.style.borderTop = "1px solid #ccc";
+  panel.style.fontSize = "14px";
+  panel.innerHTML = `
+    🔒 <strong>Versión de prueba</strong><br>
+    Máximo 2 clientes activos simultáneamente<br><br>
+    <button id="activateFullBtn">Activar versión completa</button>
+  `;
+
+  document.querySelector(".app").appendChild(panel);
+
+  document
+    .getElementById("activateFullBtn")
+    .addEventListener("click", () => {
+      let id = localStorage.getItem("focowork_id");
+      if (!id) {
+        id =
+          "FW-" +
+          Math.random().toString(36).slice(2, 10).toUpperCase();
+        localStorage.setItem("focowork_id", id);
+      }
+
+      const text = encodeURIComponent(
+        `Hola 👋\nQuiero activar FocoWork.\n\nID de instalación:\n${id}`
+      );
+
+      window.open(
+        `https://wa.me/${WHATSAPP_PHONE}?text=${text}`,
+        "_blank"
+      );
+    });
+}
 
 // ===============================
 // INIT
 // ===============================
-loadState();
 updateUI();
