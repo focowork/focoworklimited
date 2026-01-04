@@ -1,6 +1,7 @@
 /*************************************************
  * FOCOWORK – app.js DEFINITIVO
- * Sin módulos – GitHub Pages compatible
+ * Sesión + total separados
+ * Usuario inicial para reportes
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -23,6 +24,16 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* ================= USER ================= */
+
+let userName = localStorage.getItem("focowork_user_name");
+if (!userName) {
+  userName = prompt("Tu nombre (para los reportes):");
+  if (userName) {
+    localStorage.setItem("focowork_user_name", userName);
+  }
+}
+
 /* ================= STATE ================= */
 
 let state = JSON.parse(localStorage.getItem("focowork_state")) || {
@@ -31,8 +42,9 @@ let state = JSON.parse(localStorage.getItem("focowork_state")) || {
   currentClientId: null,
   currentActivity: null,
   lastTick: null,
-  clients: {},          // id -> client
-  focus: {}             // actividad -> segundos (día)
+  sessionElapsed: 0,     // ⏱️ reloj grande (actividad)
+  clients: {},           // clientes
+  focus: {}              // enfoque diario
 };
 
 function save() {
@@ -65,14 +77,19 @@ function tick() {
   if (elapsed <= 0) return;
 
   state.lastTick = now;
+  state.sessionElapsed += elapsed;
 
   const client = state.clients[state.currentClientId];
   if (!client) return;
 
+  // total cliente
   client.total += elapsed;
+
+  // actividad cliente
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
+  // enfoque diario
   state.focus[state.currentActivity] =
     (state.focus[state.currentActivity] || 0) + elapsed;
 
@@ -95,10 +112,12 @@ function updateUI() {
 
   $("activityName").textContent = state.currentActivity || "—";
 
+  // ⏱️ reloj de sesión
   $("timer").textContent = client
-    ? formatTime(client.total)
+    ? formatTime(state.sessionElapsed)
     : "00:00:00";
 
+  // 📦 total cliente
   if ($("clientTotal")) {
     $("clientTotal").textContent = client
       ? `Total cliente: ${formatTime(client.total)}`
@@ -134,6 +153,7 @@ function newClient() {
 
   state.currentClientId = id;
   state.currentActivity = "trabajo";
+  state.sessionElapsed = 0;
   state.lastTick = Date.now();
 
   save();
@@ -153,6 +173,7 @@ function changeClient() {
 
   state.currentClientId = actives[sel - 1].id;
   state.currentActivity = "trabajo";
+  state.sessionElapsed = 0;
   state.lastTick = Date.now();
 
   save();
@@ -172,6 +193,7 @@ function closeClient() {
 
   state.currentClientId = null;
   state.currentActivity = null;
+  state.sessionElapsed = 0;
   state.lastTick = null;
 
   save();
@@ -183,6 +205,7 @@ function closeClient() {
 function setActivity(act) {
   if (!state.currentClientId) return;
   state.currentActivity = act;
+  state.sessionElapsed = 0;   // 🔑 reinicio SOLO sesión
   state.lastTick = Date.now();
   save();
   updateUI();
@@ -210,7 +233,7 @@ function showFocus() {
   }
 
   alert(
-`🎯 Enfoque diario
+`🎯 Enfoque diario – ${userName || "Usuario"}
 
 ${detalle}
 Trabajo: ${pct}%
@@ -222,10 +245,10 @@ Estado: ${estado}`
 
 function exportTodayCSV() {
   const date = todayKey();
-  let csv = "Cliente,Tiempo total\n";
+  let csv = "Usuario,Cliente,Tiempo total\n";
 
   Object.values(state.clients).forEach(c => {
-    csv += `${c.name},${formatTime(c.total)}\n`;
+    csv += `${userName || ""},${c.name},${formatTime(c.total)}\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
