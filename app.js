@@ -1,254 +1,233 @@
-/************************************************
- * FOCOWORK – app.js DEFINITIVO (SIN MÓDULOS)
- * Un solo reloj, estado coherente
- ************************************************/
+/*************************************************
+ * FOCO WORK - APP.JS DEFINITIVO
+ * Sin módulos – GitHub Pages compatible
+ *************************************************/
 
-/* ========= CONFIG ========= */
-const FULL_CODE = "FOCOWORK-FULL-2024";
-const WHATSAPP_PHONE = "34649383847";
+/* ========= ESTADO GLOBAL ========= */
 
-/* ========= HELPERS ========= */
-const $ = (id) => document.getElementById(id);
+let clients = JSON.parse(localStorage.getItem("clients")) || {};
+let currentClient = null;
+let currentActivity = null;
 
-function now() {
-  return Date.now();
+let elapsedSession = 0;   // tiempo de la actividad actual
+let timerInterval = null;
+
+/* ========= ELEMENTOS DOM ========= */
+
+const clientNameEl = document.getElementById("clientName");
+const activityNameEl = document.getElementById("activityName");
+const timerEl = document.getElementById("timer");
+const infoPanel = document.getElementById("infoPanel");
+const infoText = document.getElementById("infoText");
+
+/* ========= UTILIDADES ========= */
+
+function formatTime(sec) {
+  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
 }
-
-function format(ms) {
-  const s = Math.floor(ms / 1000);
-  const h = String(Math.floor(s / 3600)).padStart(2, "0");
-  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
-  const sec = String(s % 60).padStart(2, "0");
-  return `${h}:${m}:${sec}`;
-}
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/* ========= STATE ========= */
-let state = JSON.parse(localStorage.getItem("focowork_state")) || {
-  isFull: false,
-  currentClientId: null,
-  currentActivity: null,
-  lastTick: null,
-  day: todayKey(),
-  clients: {},       // id -> client
-  focus: {},         // activity -> ms (daily)
-};
 
 function save() {
-  localStorage.setItem("focowork_state", JSON.stringify(state));
+  localStorage.setItem("clients", JSON.stringify(clients));
 }
 
-/* ========= DAILY RESET ========= */
-function resetDayIfNeeded() {
-  const t = todayKey();
-  if (state.day !== t) {
-    state.day = t;
-    state.focus = {};
-    save();
-  }
+/* ========= TIMER ========= */
+
+function startTimer() {
+  if (timerInterval) return;
+
+  timerInterval = setInterval(() => {
+    elapsedSession++;
+
+    if (currentClient && clients[currentClient]) {
+      clients[currentClient].totalTime++;
+      clients[currentClient].activities[currentActivity]++;
+      save();
+    }
+
+    updateUI();
+  }, 1000);
 }
 
-/* ========= TIME ENGINE (CORE) ========= */
-function tick() {
-  resetDayIfNeeded();
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
 
-  if (!state.currentClientId || !state.currentActivity || !state.lastTick) {
-    state.lastTick = now();
+/* ========= UI ========= */
+
+function updateUI() {
+  if (!currentClient) {
+    clientNameEl.textContent = "Sin cliente activo";
+    activityNameEl.textContent = "—";
+    timerEl.textContent = "00:00:00";
     return;
   }
 
-  const elapsed = now() - state.lastTick;
-  state.lastTick = now();
+  clientNameEl.textContent = `Cliente: ${currentClient}`;
+  activityNameEl.textContent = currentActivity;
+  timerEl.textContent = formatTime(elapsedSession);
 
-  const client = state.clients[state.currentClientId];
-  if (!client) return;
-
-  // total cliente
-  client.total += elapsed;
-
-  // por actividad cliente
-  client.activities[state.currentActivity] =
-    (client.activities[state.currentActivity] || 0) + elapsed;
-
-  // enfoque diario
-  state.focus[state.currentActivity] =
-    (state.focus[state.currentActivity] || 0) + elapsed;
-
-  save();
-  updateUI();
-}
-
-setInterval(tick, 1000);
-
-/* ========= UI ========= */
-function updateUI() {
-  const client = state.currentClientId
-    ? state.clients[state.currentClientId]
-    : null;
-
-  $("clientName").textContent = client
-    ? `Cliente: ${client.name}`
-    : "Sin cliente activo";
-
-  $("activityName").textContent = state.currentActivity || "—";
-
-  $("timer").textContent = client
-    ? format(client.total)
-    : "00:00:00";
-
-  if ($("clientTotal")) {
-    $("clientTotal").textContent = client
-      ? `Total cliente: ${format(client.total)}`
-      : "";
+  let totalEl = document.getElementById("totalClientTime");
+  if (!totalEl) {
+    totalEl = document.createElement("div");
+    totalEl.id = "totalClientTime";
+    totalEl.style.opacity = "0.7";
+    timerEl.after(totalEl);
   }
 
-  if ($("versionBox")) {
-    $("versionBox").style.display = state.isFull ? "none" : "block";
-  }
+  totalEl.textContent =
+    "Total cliente: " + formatTime(clients[currentClient].totalTime);
 }
 
-/* ========= CLIENTS ========= */
+/* ========= CLIENTES ========= */
+
 function newClient() {
   const name = prompt("Nombre del cliente:");
   if (!name) return;
 
-  const activeClients = Object.values(state.clients).filter(c => c.active);
-  if (!state.isFull && activeClients.length >= 2) {
-    alert("Versión de prueba: máximo 2 clientes activos");
-    return;
+  if (!clients[name]) {
+    clients[name] = {
+      totalTime: 0,
+      activities: {
+        trabajo: 0,
+        telefono: 0,
+        cliente: 0,
+        visitando: 0,
+        otros: 0,
+      },
+    };
   }
 
-  const id = crypto.randomUUID();
-
-  state.clients[id] = {
-    id,
-    name,
-    active: true,
-    total: 0,
-    activities: {},
-  };
-
-  // activar cliente + actividad por defecto
-  state.currentClientId = id;
-  state.currentActivity = "trabajo";
-  state.lastTick = now();
+  currentClient = name;
+  currentActivity = "trabajo";
+  elapsedSession = 0;
 
   save();
+  startTimer();
   updateUI();
 }
 
 function changeClient() {
-  const actives = Object.values(state.clients).filter(c => c.active);
-  if (!actives.length) {
-    alert("No hay clientes activos");
+  const names = Object.keys(clients);
+  if (names.length === 0) {
+    alert("No hay clientes");
     return;
   }
 
-  const list = actives.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
-  const sel = parseInt(prompt("Clientes activos:\n" + list), 10);
+  const selected = prompt(
+    "Clientes:\n" + names.map((n, i) => `${i + 1}. ${n}`).join("\n")
+  );
 
-  if (!sel || !actives[sel - 1]) return;
+  const index = parseInt(selected) - 1;
+  if (!names[index]) return;
 
-  state.currentClientId = actives[sel - 1].id;
-  state.currentActivity = "trabajo";
-  state.lastTick = now();
-
-  save();
+  currentClient = names[index];
+  elapsedSession = 0;
+  startTimer();
   updateUI();
 }
 
 function closeClient() {
-  const id = state.currentClientId;
-  if (!id) return;
+  if (!currentClient) return;
 
-  const client = state.clients[id];
-  client.active = false;
+  stopTimer();
 
-  alert(
-    `Cliente: ${client.name}\nTiempo total: ${format(client.total)}`
-  );
+  infoPanel.classList.remove("hidden");
+  infoText.innerHTML = `
+    <strong>Cliente cerrado</strong><br>
+    Cliente: ${currentClient}<br>
+    Tiempo total: ${formatTime(clients[currentClient].totalTime)}
+  `;
 
-  state.currentClientId = null;
-  state.currentActivity = null;
-  state.lastTick = null;
+  currentClient = null;
+  currentActivity = null;
+  elapsedSession = 0;
 
-  save();
   updateUI();
 }
 
-/* ========= ACTIVITIES ========= */
-function setActivity(act) {
-  if (!state.currentClientId) return;
+/* ========= ACTIVIDADES ========= */
 
-  state.currentActivity = act;
-  state.lastTick = now();
+document.querySelectorAll(".activity").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (!currentClient) return;
 
-  save();
-  updateUI();
-}
+    currentActivity = btn.dataset.activity;
+    elapsedSession = 0;
+    startTimer();
+    updateUI();
+  });
+});
 
 /* ========= ENFOQUE ========= */
+
 function showFocus() {
-  const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
-  if (!total) {
-    alert("Aún no hay datos de enfoque hoy");
+  if (!clients[currentClient]) {
+    alert("No hay cliente activo");
     return;
   }
 
-  const trabajo = state.focus.trabajo || 0;
-  const pct = Math.round((trabajo / total) * 100);
+  const acts = clients[currentClient].activities;
+  const total =
+    acts.trabajo +
+    acts.telefono +
+    acts.cliente +
+    acts.visitando +
+    acts.otros;
+
+  const focusPct = total
+    ? Math.round((acts.trabajo / total) * 100)
+    : 0;
 
   let estado = "🔴 Disperso";
-  if (pct >= 64) estado = "🟢 Enfocado";
-  else if (pct >= 40) estado = "🟡 Atención";
+  if (focusPct >= 64) estado = "🟢 Enfocado";
+  else if (focusPct >= 40) estado = "🟡 Atención";
 
-  let detalle = "";
-  for (const act in state.focus) {
-    detalle += `${act}: ${format(state.focus[act])}\n`;
+  infoPanel.classList.remove("hidden");
+  infoText.innerHTML = `
+    <strong>🎯 Enfoque (hoy)</strong><br><br>
+    Trabajo: ${formatTime(acts.trabajo)}<br>
+    Teléfono: ${formatTime(acts.telefono)}<br>
+    Cliente: ${formatTime(acts.cliente)}<br>
+    Visitando: ${formatTime(acts.visitando)}<br>
+    Otros: ${formatTime(acts.otros)}<br><br>
+    Trabajo: ${focusPct}%<br>
+    Estado: ${estado}
+  `;
+}
+
+/* ========= CSV HOY ========= */
+
+function exportTodayCSV() {
+  const date = new Date().toISOString().slice(0, 10);
+  let csv = "Cliente,Tiempo total\n";
+
+  for (const c in clients) {
+    csv += `${c},${formatTime(clients[c].totalTime)}\n`;
   }
 
-  alert(
-`🎯 Enfoque diario
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
 
-${detalle}
-Trabajo: ${pct}%
-Estado: ${estado}`
-  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `focowork_${date}.csv`;
+  a.click();
+
+  URL.revokeObjectURL(url);
 }
 
-/* ========= FULL + WHATSAPP ========= */
-function activateWhatsApp() {
-  const msg = encodeURIComponent("Hola, quiero activar FocoWork");
-  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${msg}`, "_blank");
-}
+/* ========= EVENTOS ========= */
 
-function applyCode() {
-  const code = $("activationCode").value.trim();
-  if (code === FULL_CODE) {
-    state.isFull = true;
-    save();
-    updateUI();
-    alert("Versión completa activada");
-  } else {
-    alert("Código incorrecto");
-  }
-}
+document.getElementById("newClient").onclick = newClient;
+document.getElementById("changeClient").onclick = changeClient;
+document.getElementById("closeClient").onclick = closeClient;
+document.getElementById("focusBtn").onclick = showFocus;
+document.getElementById("todayBtn").onclick = exportTodayCSV;
 
-/* ========= EVENTS ========= */
-document.querySelectorAll(".activity").forEach(btn => {
-  btn.onclick = () => setActivity(btn.dataset.activity);
-});
+/* ========= INICIO ========= */
 
-$("newClient").onclick = newClient;
-$("changeClient").onclick = changeClient;
-$("closeClient").onclick = closeClient;
-$("focusBtn").onclick = showFocus;
-
-if ($("activateFull")) $("activateFull").onclick = activateWhatsApp;
-if ($("applyCode")) $("applyCode").onclick = applyCode;
-
-/* ========= INIT ========= */
 updateUI();
