@@ -1,49 +1,59 @@
-/* RESET & BASE */
+/* ===============================
+   RESET BÁSICO
+   =============================== */
 
 * {
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
   margin: 0;
-  background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
-  color: #ffffff;
-  overflow-x: hidden;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(circle at top, #111827, #020617);
+  color: #e5e7eb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
 }
+
+/* ===============================
+   CONTENEDOR PRINCIPAL
+   =============================== */
 
 .app {
-  min-height: 100vh;
-  padding: 18px 20px 40px;
-  max-width: 480px;
+  max-width: 430px;
   margin: 0 auto;
+  padding: 18px 16px 120px;
 }
 
-/* HEADER */
+/* ===============================
+   HEADER / RELOJ
+   =============================== */
 
 .header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 #clientName {
   font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 4px;
+  font-weight: 600;
+  opacity: 0.95;
 }
 
 #activityName {
+  margin-top: 4px;
   font-size: 15px;
-  opacity: 0.65;
-  margin-bottom: 10px;
+  opacity: 0.6;
   text-transform: capitalize;
 }
 
 #timer {
-  font-size: 56px;
-  font-weight: 800;
-  letter-spacing: 1px;
+  margin-top: 10px;
+  font-size: 54px;
+  font-weight: 700;
+  letter-spacing: 2px;
 }
 
 #totalClient {
@@ -52,198 +62,172 @@ body {
   opacity: 0.55;
 }
 
-/* SECTIONS */
+/* ===============================
+   BLOQUES
+   =============================== */
 
-.section {
+.panel {
   background: rgba(255,255,255,0.04);
   border-radius: 22px;
-  padding: 16px;
+  padding: 14px;
   margin-bottom: 18px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.06),
+    0 18px 40px rgba(0,0,0,0.6);
 }
 
-/* GRID */
+/* ===============================
+   GRID DE BOTONES
+   =============================== */
 
 .grid {
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
-.grid.activities {
-  grid-template-columns: 1fr 1fr;
-}
+/* ===============================
+   BOTONES (BASE)
+   =============================== */
 
-.grid.activities .full {
-  grid-column: span 2;
-}
-
-.grid.actions {
-  grid-template-columns: 1fr 1fr;
-}
-
-.grid.actions .full {
-  grid-column: span 2;
-}
-
-.grid.reports {
-  grid-template-columns: 1fr 1fr;
-}
-
-/* BUTTON BASE */
-
-button {
-  border: none;
+.btn {
   border-radius: 18px;
-  padding: 14px 16px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
+  padding: 16px 14px;
   background: rgba(255,255,255,0.06);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06),
-              0 6px 18px rgba(0,0,0,0.45);
+  color: #f9fafb;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  user-select: none;
+
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    color 0.15s ease;
 }
 
-button:active {
+.btn:active {
   transform: scale(0.97);
 }
 
-button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
+/* ===============================
+   ESTADO ACTIVO (CLAVE)
+   =============================== */
 
-/* ACTIVITY BUTTONS */
-
-.activity.active {
+.btn.active {
   background: linear-gradient(135deg, #2563eb, #3b82f6);
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.4),
-              0 12px 30px rgba(37,99,235,0.5);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 2px rgba(59,130,246,0.45),
+    0 16px 34px rgba(37,99,235,0.55);
 }
 
-/* PRIMARY ACTIONS */
+/* ===============================
+   TIPOS DE BOTÓN
+   =============================== */
 
-.btn-primary {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+.btn.activity.active {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
 }
 
-.btn-success {
+.btn.secondary.active {
+  background: linear-gradient(135deg, #374151, #4b5563);
+}
+
+.btn.close {
+  grid-column: span 2;
+}
+
+.btn.close.active {
   background: linear-gradient(135deg, #16a34a, #22c55e);
+  box-shadow:
+    0 0 0 2px rgba(34,197,94,0.45),
+    0 16px 34px rgba(22,163,74,0.55);
 }
 
-.btn-warning {
-  background: linear-gradient(135deg, #ca8a04, #facc15);
+/* ===============================
+   BOTÓN FOTO
+   =============================== */
+
+.btn.photo {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
 }
 
-.btn-danger {
-  background: linear-gradient(135deg, #dc2626, #ef4444);
+.btn.photo.active {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
 }
 
-/* CAMERA BUTTON */
+/* ===============================
+   BOTONES INFERIORES
+   =============================== */
 
-.btn-camera {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+.bottom-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* ===============================
+   BLOQUE VERSIÓN / ACTIVACIÓN
+   =============================== */
+
+.version-box {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(2,6,23,0.85), rgba(2,6,23,0.98));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -20px 40px rgba(0,0,0,0.7);
+}
+
+.version-box .lock {
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.7;
+  margin-bottom: 12px;
+}
+
+.version-box button {
+  width: 100%;
+  border-radius: 16px;
+  padding: 14px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
   background: linear-gradient(135deg, #2563eb, #3b82f6);
-  font-size: 17px;
+  color: #fff;
 }
 
-/* INFO PANEL / MODAL */
+/* ===============================
+   INFO / MODALES
+   =============================== */
 
 .info-panel {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 999;
 }
 
 .info-panel.hidden {
   display: none;
 }
 
-.info-box {
-  background: #111;
+#infoText {
+  background: #1f2933;
   border-radius: 22px;
   padding: 20px;
-  width: 90%;
+  width: 85%;
   max-width: 360px;
   text-align: left;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
-}
-
-.info-box h3 {
-  margin-top: 0;
-  margin-bottom: 12px;
-}
-
-.info-box button {
-  margin-top: 14px;
-  width: 100%;
-}
-
-/* VERSION BOX */
-
-.version-box {
-  margin-top: 26px;
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(255,255,255,0.04);
-  text-align: center;
-}
-
-.version-box input {
-  width: 100%;
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 14px;
-  border: none;
-  font-size: 15px;
-}
-
-.version-box button {
-  margin-top: 10px;
-  width: 100%;
-}
-
-/* ACCESSIBILITY */
-
-button:focus-visible {
-  outline: 2px solid rgba(59,130,246,0.6);
-  outline-offset: 2px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.8);
   }
-/* === ESTADOS ACTIVOS (FIX DEFINITIVO) === */
-
-/* Cualquier botón marcado como activo */
-button.active,
-button.selected,
-button[data-active="true"] {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  box-shadow:
-    0 0 0 2px rgba(59,130,246,0.45),
-    0 12px 30px rgba(37,99,235,0.55);
-  color: #ffffff;
-}
-
-/* Evitar que varios parezcan activos por hover */
-button:not(.active):not(.selected):not([data-active="true"]):hover {
-  background: rgba(255,255,255,0.09);
-}
-
-/* Estado activo específico para Cerrar */
-button.btn-success.active {
-  background: linear-gradient(135deg, #16a34a, #22c55e);
-  box-shadow:
-    0 0 0 2px rgba(34,197,94,0.45),
-    0 12px 30px rgba(22,163,74,0.55);
-}
-
-/* Estado activo para Teléfono / Otros (menos dominante) */
-button.soft-active.active {
-  background: linear-gradient(135deg, #374151, #4b5563);
-}
