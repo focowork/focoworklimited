@@ -13,10 +13,10 @@ body {
 
 .app {
   min-height: 100vh;
-  padding: 24px 20px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   max-width: 100%;
 }
 
@@ -24,7 +24,7 @@ body {
 
 .header {
   text-align: center;
-  padding: 12px 0;
+  padding: 8px 0;
 }
 
 .client-name {
@@ -44,9 +44,9 @@ body {
 }
 
 .timer {
-  font-size: 64px;
+  font-size: 56px;
   font-weight: 700;
-  margin: 20px 0 16px;
+  margin: 12px 0 10px;
   letter-spacing: -2px;
   font-variant-numeric: tabular-nums;
   color: #ffffff;
@@ -66,7 +66,7 @@ body {
   background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
-  padding: 20px;
+  padding: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
@@ -91,8 +91,8 @@ body {
 button {
   border: none;
   border-radius: 18px;
-  padding: 20px;
-  font-size: 16px;
+  padding: 16px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.2px;
   background: rgba(255, 255, 255, 0.08);
@@ -145,6 +145,11 @@ button.danger:hover {
   border: 1px solid rgba(59, 130, 246, 0.3);
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
   transform: scale(1.02);
+}
+
+/* Full width button */
+.full-width {
+  grid-column: 1 / -1;
 }
 
 /* FOOTER */
@@ -244,4 +249,4 @@ button:focus-visible {
   body {
     background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
   }
-}
+  }
