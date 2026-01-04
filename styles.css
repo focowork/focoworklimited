@@ -49,6 +49,7 @@ html, body {
   }
 }
 
+.client-name,
 #clientName {
   font-size: 24px;
   font-weight: 700;
@@ -60,6 +61,7 @@ html, body {
   margin-bottom: 6px;
 }
 
+.activity-name,
 #activityName {
   margin-top: 6px;
   font-size: 15px;
@@ -69,6 +71,7 @@ html, body {
   letter-spacing: 0.5px;
 }
 
+.timer,
 #timer {
   margin-top: 20px;
   font-size: 64px;
@@ -82,7 +85,8 @@ html, body {
   text-shadow: 0 0 40px rgba(96, 165, 250, 0.3);
 }
 
-#totalClient {
+.client-total,
+#clientTotal {
   margin-top: 10px;
   font-size: 14px;
   font-weight: 500;
@@ -91,7 +95,7 @@ html, body {
 }
 
 /* ===============================
-   BLOQUES
+   BLOQUES / PANELS
    =============================== */
 
 .panel {
@@ -125,10 +129,13 @@ html, body {
 }
 
 /* ===============================
-   BOTONES (BASE)
+   BOTONES BASE (TODOS)
    =============================== */
 
-.btn {
+button,
+.activity,
+.primary,
+.danger {
   border-radius: 20px;
   padding: 18px 16px;
   background: rgba(51, 65, 85, 0.6);
@@ -143,11 +150,11 @@ html, body {
   position: relative;
   overflow: hidden;
   
-  transition:
-    all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn::before {
+button::before,
+.activity::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -160,26 +167,30 @@ html, body {
   transition: width 0.6s, height 0.6s;
 }
 
-.btn:active::before {
+button:active::before,
+.activity:active::before {
   width: 300px;
   height: 300px;
 }
 
-.btn:active {
+button:active,
+.activity:active {
   transform: scale(0.96);
 }
 
-.btn:hover {
+button:hover,
+.activity:hover {
   background: rgba(51, 65, 85, 0.8);
   border-color: rgba(148, 163, 184, 0.2);
 }
 
 /* ===============================
-   ESTADO ACTIVO (CLAVE)
+   BOTONES ACTIVOS
    =============================== */
 
-.btn.active {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+.activity.active,
+.activity.primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
   color: #ffffff;
   border-color: rgba(59, 130, 246, 0.4);
   box-shadow:
@@ -189,8 +200,9 @@ html, body {
   transform: translateY(-2px);
 }
 
-.btn.active:hover {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+.activity.active:hover,
+.activity.primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
   box-shadow:
     0 0 0 3px rgba(59, 130, 246, 0.3),
     0 12px 32px rgba(37, 99, 235, 0.5),
@@ -198,31 +210,49 @@ html, body {
 }
 
 /* ===============================
-   TIPOS DE BOTÓN
+   BOTÓN ANCHO COMPLETO
    =============================== */
 
-.btn.activity.active {
-  background: linear-gradient(135deg, #3b82f6, #1e40af);
+.full-width {
+  grid-column: span 2;
+}
+
+/* ===============================
+   BOTÓN PRIMARY (Cámara, etc)
+   =============================== */
+
+#cameraBtn,
+#activateFull {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(30, 64, 175, 0.6)) !important;
+  backdrop-filter: blur(10px);
+  border-color: rgba(59, 130, 246, 0.3);
+  grid-column: span 2;
+}
+
+#cameraBtn:hover,
+#activateFull:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(30, 64, 175, 0.8)) !important;
+}
+
+#cameraBtn.active {
+  background: linear-gradient(135deg, #3b82f6, #1e40af) !important;
   box-shadow:
     0 0 0 3px rgba(59, 130, 246, 0.2),
     0 8px 24px rgba(30, 64, 175, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.btn.secondary.active {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow:
-    0 0 0 3px rgba(99, 102, 241, 0.2),
-    0 8px 24px rgba(79, 70, 229, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
+/* ===============================
+   BOTÓN DANGER (Cerrar)
+   =============================== */
 
-.btn.close {
+.danger,
+#closeClient {
   grid-column: span 2;
 }
 
-.btn.close.active {
+.danger.active,
+#closeClient.active {
   background: linear-gradient(135deg, #10b981, #059669);
   border-color: rgba(16, 185, 129, 0.4);
   box-shadow:
@@ -232,37 +262,55 @@ html, body {
 }
 
 /* ===============================
-   BOTÓN FOTO
+   ACCIONES (Nuevo, Cambiar, Cerrar)
    =============================== */
 
-.btn.photo {
-  grid-column: span 2;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(30, 64, 175, 0.6));
-  backdrop-filter: blur(10px);
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-.btn.photo:hover {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(30, 64, 175, 0.8));
-}
-
-.btn.photo.active {
-  background: linear-gradient(135deg, #3b82f6, #1e40af);
-  box-shadow:
-    0 0 0 3px rgba(59, 130, 246, 0.2),
-    0 8px 24px rgba(30, 64, 175, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
 }
 
 /* ===============================
-   BOTONES INFERIORES
+   GALERÍA DE FOTOS
    =============================== */
 
-.bottom-actions {
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.photo-gallery img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.photo-gallery img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ===============================
+   FOOTER
+   =============================== */
+
+.footer {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
   margin-top: 12px;
+}
+
+.footer button {
+  background: rgba(51, 65, 85, 0.6);
+  backdrop-filter: blur(10px);
 }
 
 /* ===============================
@@ -307,6 +355,7 @@ html, body {
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0.3px;
+  margin-bottom: 12px;
 }
 
 .version-box button:hover {
@@ -319,6 +368,36 @@ html, body {
 
 .version-box button:active {
   transform: translateY(0);
+}
+
+.version-box input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.6);
+  color: #f8fafc;
+  font-size: 15px;
+  margin-bottom: 12px;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.version-box input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.version-box input::placeholder {
+  color: rgba(248, 250, 252, 0.4);
+}
+
+/* ===============================
+   UTILIDADES
+   =============================== */
+
+.hidden {
+  display: none !important;
 }
 
 /* ===============================
@@ -350,6 +429,7 @@ html, body {
   display: none;
 }
 
+.info-text,
 #infoText {
   background: linear-gradient(135deg, #1e293b, #334155);
   border: 1px solid rgba(148, 163, 184, 0.2);
