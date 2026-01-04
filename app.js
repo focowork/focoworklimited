@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (ESTABLE DEFINITIVO)
+ * FOCOWORK — app.js (ESTABLE + ENFOQUE + FOTOS)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -120,7 +120,6 @@ function updateUI() {
   });
 
   $("cameraBtn").style.display = client ? "block" : "none";
-
   renderPhotoGallery();
   $("versionBox").style.display = state.isFull ? "none" : "block";
 }
@@ -253,7 +252,7 @@ function addPhotoToClient() {
   input.click();
 }
 
-/* ================= 📂 GALERÍA ================= */
+/* ================= 📂 GALERÍA + BORRADO ================= */
 
 function renderPhotoGallery() {
   const gallery = $("photoGallery");
@@ -268,24 +267,34 @@ function renderPhotoGallery() {
       const img = document.createElement("img");
       img.src = p.data;
       img.className = "photo-thumb";
+
       img.onclick = () => {
-        const w = window.open();
-        if (w) {
-          w.document.write(`<img src="${p.data}" style="width:100%;background:#000">`);
+        if (confirm("¿Eliminar esta foto del cliente?")) {
+          client.photos = client.photos.filter(f => f.id !== p.id);
+          save();
+          renderPhotoGallery();
         }
       };
+
       gallery.appendChild(img);
     });
 }
 
-/* ================= ENFOQUE ================= */
+/* ================= 🎯 ENFOQUE (DETALLADO) ================= */
 
 function showFocus() {
   const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
-  if (!total) return alert("Aún no hay datos");
+  if (!total) return alert("Aún no hay datos de hoy");
 
-  const pct = Math.round(((state.focus.trabajo || 0) / total) * 100);
-  alert(`Trabajo: ${pct}%`);
+  let msg = `🎯 Enfoque diario — ${userName || "Usuario"}\n\n`;
+  for (const act in state.focus) {
+    const t = state.focus[act];
+    const pct = Math.round((t / total) * 100);
+    msg += `${act}: ${formatTime(t)} (${pct}%)\n`;
+  }
+
+  msg += `\nTotal: ${formatTime(total)}`;
+  alert(msg);
 }
 
 /* ================= CSV ================= */
@@ -315,12 +324,16 @@ function applyCode() {
     localStorage.setItem("focowork_full", "true");
     save();
     updateUI();
+    alert("Versión completa activada");
   } else alert("Código incorrecto");
 }
 
 /* ================= EVENTS ================= */
 
-document.querySelectorAll(".activity").forEach(b => b.onclick = () => setActivity(b.dataset.activity));
+document.querySelectorAll(".activity").forEach(b =>
+  b.onclick = () => setActivity(b.dataset.activity)
+);
+
 $("newClient").onclick = newClient;
 $("changeClient").onclick = changeClient;
 $("closeClient").onclick = closeClient;
