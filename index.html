@@ -1,79 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FocoWork</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.json" />
-  <meta name="theme-color" content="#0f172a" />
-
-  <!-- Estilos -->
-  <link rel="stylesheet" href="./styles.css" />
+  <meta charset="UTF-8">
+  <title>TEST JS</title>
 </head>
-
 <body>
-  <div class="app">
+  <h1>Test JS</h1>
 
-    <!-- HEADER -->
-    <div class="header">
-      <div id="clientName">Sin cliente activo</div>
-      <div id="activityName">—</div>
-      <div id="timer">00:00:00</div>
-      <div id="clientTotal" class="small"></div>
-    </div>
-
-    <!-- ACTIVIDADES -->
-    <div class="grid activities">
-      <button class="activity" data-activity="trabajo">🟦 Trabajo</button>
-      <button class="activity" data-activity="telefono">📞 Teléfono</button>
-      <button class="activity" data-activity="cliente">👥 Cliente</button>
-      <button class="activity" data-activity="visitando">📘 Visitando</button>
-      <button class="activity" data-activity="otros">⚙️ Otros</button>
-    </div>
-
-    <!-- ACCIONES CLIENTE -->
-    <div class="grid actions">
-      <button id="newClient">➕ Nuevo</button>
-      <button id="changeClient">🔁 Cambiar</button>
-      <button id="closeClient">✅ Cerrar</button>
-    </div>
-
-    <!-- REPORTES -->
-    <div class="grid reports">
-      <button id="focusBtn">🎯 Enfoque</button>
-      <button id="todayBtn">📅 Hoy</button>
-    </div>
-
-    <!-- PANEL INFO -->
-    <div id="infoPanel" class="info-panel hidden">
-      <div id="infoText"></div>
-      <button id="closeInfo">Cerrar</button>
-    </div>
-
-    <!-- BLOQUE VERSIÓN -->
-    <div id="versionBox" class="version-box">
-      <div class="lock">
-        🔒 <strong>Versión de prueba</strong><br />
-        Máximo 2 clientes activos simultáneamente
-      </div>
-
-      <button id="activateFull">Activar versión completa</button>
-
-      <input
-        id="activationCode"
-        type="text"
-        placeholder="Introduce código de activación"
-        autocomplete="off"
-      />
-
-      <button id="applyCode">Activar código</button>
-    </div>
-
-  </div>
-
-  <!-- ⚠️ ESTA LÍNEA ES CRÍTICA: NO TOCAR -->
-  <script type="module" src="./app.js"></script>
+  <script src="/focoworklimited/app.js"></script>
 </body>
-                                   </html>
+</html>
