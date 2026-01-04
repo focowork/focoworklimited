@@ -5,51 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FocoWork</title>
 
-  <!-- PWA -->
-  <link rel="manifest" href="/focoworklimited/manifest.json" />
-  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b0b0b" />
 
-  <!-- Estilos -->
-  <link rel="stylesheet" href="/focoworklimited/styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
   <div class="app">
 
     <!-- HEADER -->
-    <div class="header">
-      <div id="clientName">Sin cliente activo</div>
-      <div id="activityName">—</div>
-      <div id="timer">00:00:00</div>
-      <div id="clientTotal" class="small"></div>
-    </div>
+    <header class="header">
+      <div id="clientName" class="client-name">Sin cliente activo</div>
+      <div id="activityName" class="activity-name">—</div>
+      <div id="timer" class="timer">00:00:00</div>
+      <div id="clientTotal" class="client-total"></div>
+    </header>
 
     <!-- ACTIVIDADES -->
-    <div class="grid activities">
-      <button class="activity" data-activity="trabajo">🟦 Trabajo</button>
-      <button class="activity" data-activity="telefono">📞 Teléfono</button>
-      <button class="activity" data-activity="cliente">👥 Cliente</button>
-      <button class="activity" data-activity="visitando">📘 Visitando</button>
-      <button class="activity" data-activity="otros">⚙️ Otros</button>
-    </div>
+    <section class="panel">
+      <div class="grid activities">
+        <button class="activity" data-activity="trabajo">🟦 Trabajo</button>
+        <button class="activity" data-activity="telefono">📞 Teléfono</button>
+        <button class="activity" data-activity="cliente">👥 Cliente</button>
+        <button class="activity" data-activity="visitando">📘 Visitando</button>
+        <button class="activity" data-activity="otros">⚙️ Otros</button>
+      </div>
+    </section>
 
-    <!-- ACCIONES CLIENTE -->
-    <div class="grid actions">
-      <button id="newClient">➕ Nuevo</button>
-      <button id="changeClient">🔁 Cambiar</button>
-      <button id="closeClient">✅ Cerrar</button>
-    </div>
+    <!-- CLIENTES -->
+    <section class="panel">
+      <div class="grid actions">
+        <button id="newClient">➕ Nuevo</button>
+        <button id="changeClient">🔁 Cambiar</button>
+        <button id="closeClient" class="danger">✅ Cerrar</button>
+      </div>
+    </section>
 
-    <!-- REPORTES -->
-    <div class="grid reports">
+    <!-- FOOTER -->
+    <footer class="footer">
       <button id="focusBtn">🎯 Enfoque</button>
       <button id="todayBtn">📅 Hoy</button>
-    </div>
-
-    <!-- INFO PANEL -->
-    <div id="infoPanel" class="info-panel hidden">
-      <div id="infoText"></div>
-    </div>
+    </footer>
 
     <!-- VERSIÓN -->
     <div id="versionBox" class="version-box">
@@ -58,21 +55,23 @@
         Máximo 2 clientes activos simultáneamente
       </div>
 
-      <button id="activateFull">Activar versión completa</button>
+      <button id="activateFull" class="primary">
+        Activar versión completa
+      </button>
 
       <input
         id="activationCode"
         type="text"
         placeholder="Introduce código de activación"
-        autocomplete="off"
       />
 
-      <button id="applyCode">Activar código</button>
+      <button id="applyCode">
+        Activar código
+      </button>
     </div>
 
   </div>
 
-  <!-- APP JS DEFINITIVO (SIN MÓDULOS) -->
-  <script src="/focoworklimited/app.js"></script>
+  <script src="app.js"></script>
 </body>
-      </html>
+    </html>
