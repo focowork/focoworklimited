@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (ESTABLE + ENFOQUE + FOTOS)
+ * FOCOWORK — app.js (ESTABLE FINAL)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -107,7 +107,9 @@ function updateUI() {
     : "Sin cliente activo";
 
   $("activityName").textContent = state.currentActivity || "—";
-  $("timer").textContent = client ? formatTime(state.sessionElapsed) : "00:00:00";
+  $("timer").textContent = client
+    ? formatTime(state.sessionElapsed)
+    : "00:00:00";
 
   if ($("clientTotal")) {
     $("clientTotal").textContent = client
@@ -252,7 +254,7 @@ function addPhotoToClient() {
   input.click();
 }
 
-/* ================= 📂 GALERÍA + BORRADO ================= */
+/* ================= 📂 GALERÍA (TAP / LONG PRESS) ================= */
 
 function renderPhotoGallery() {
   const gallery = $("photoGallery");
@@ -268,11 +270,33 @@ function renderPhotoGallery() {
       img.src = p.data;
       img.className = "photo-thumb";
 
+      let pressTimer = null;
+
+      // TAP → ver foto grande
       img.onclick = () => {
-        if (confirm("¿Eliminar esta foto del cliente?")) {
-          client.photos = client.photos.filter(f => f.id !== p.id);
-          save();
-          renderPhotoGallery();
+        const w = window.open();
+        if (w) {
+          w.document.write(
+            `<img src="${p.data}" style="width:100%;height:auto;background:#000">`
+          );
+        }
+      };
+
+      // LONG PRESS → borrar
+      img.onpointerdown = () => {
+        pressTimer = setTimeout(() => {
+          if (confirm("¿Eliminar esta foto del cliente?")) {
+            client.photos = client.photos.filter(f => f.id !== p.id);
+            save();
+            renderPhotoGallery();
+          }
+        }, 600);
+      };
+
+      img.onpointerup = img.onpointerleave = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
         }
       };
 
@@ -280,7 +304,7 @@ function renderPhotoGallery() {
     });
 }
 
-/* ================= 🎯 ENFOQUE (DETALLADO) ================= */
+/* ================= 🎯 ENFOQUE DETALLADO ================= */
 
 function showFocus() {
   const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
