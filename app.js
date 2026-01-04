@@ -1,6 +1,6 @@
 /*************************************************
  * FOCOWORK — app.js MEJORADO
- * Con feedback visual y mejor UX
+ * Base de fotos por cliente (sin UI)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -118,16 +118,13 @@ function updateUI() {
       : "";
   }
 
-  // Actualizar botones de actividad
   document.querySelectorAll(".activity").forEach(btn => {
-    if (btn.dataset.activity === state.currentActivity) {
-      btn.classList.add("primary");
-    } else {
-      btn.classList.remove("primary");
-    }
+    btn.classList.toggle(
+      "primary",
+      btn.dataset.activity === state.currentActivity
+    );
   });
 
-  // Mostrar/ocultar versión box
   if ($("versionBox")) {
     $("versionBox").style.display = state.isFull ? "none" : "block";
   }
@@ -152,7 +149,8 @@ function newClient() {
     name,
     active: true,
     total: 0,
-    activities: {}
+    activities: {},
+    photos: [] // 📸 preparado para fotos
   };
 
   state.currentClientId = id;
