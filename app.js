@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (ESTABLE + CÁMARA FUNCIONAL)
+ * FOCOWORK — app.js (GALERÍA POR CLIENTE)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -79,7 +79,6 @@ function tick() {
   if (!client) return;
 
   client.total += elapsed;
-
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
@@ -122,9 +121,10 @@ function updateUI() {
     );
   });
 
-  // 📷 Cámara: visible SOLO con cliente activo
   const cam = $("cameraBtn");
   if (cam) cam.style.display = client ? "block" : "none";
+
+  renderPhotoGallery();
 
   if ($("versionBox")) {
     $("versionBox").style.display = state.isFull ? "none" : "block";
@@ -151,7 +151,7 @@ function newClient() {
     active: true,
     total: 0,
     activities: {},
-    photos: [] // 📸 fotos por cliente
+    photos: []
   };
 
   state.currentClientId = id;
@@ -243,13 +243,47 @@ function addPhotoToClient() {
       });
 
       save();
-      alert("📸 Foto guardada en el cliente");
+      renderPhotoGallery();
     };
 
     reader.readAsDataURL(file);
   };
 
   input.click();
+}
+
+/* ================= 📂 GALERÍA ================= */
+
+function renderPhotoGallery() {
+  const gallery = $("photoGallery");
+  if (!gallery) return;
+
+  gallery.innerHTML = "";
+
+  const client = state.currentClientId
+    ? state.clients[state.currentClientId]
+    : null;
+
+  if (!client || !client.photos.length) return;
+
+  const photos = [...client.photos].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
+
+  photos.forEach(p => {
+    const img = document.createElement("img");
+    img.src = p.data;
+    img.className = "photo-thumb";
+    img.onclick = () => openPhoto(p, client);
+    gallery.appendChild(img);
+  });
+}
+
+function openPhoto(photo, client) {
+  const win = window.open();
+  win.document.write(`
+    <img src="${photo.data}" style="width:100%;height:auto;background:#000">
+  `);
 }
 
 /* ================= ENFOQUE ================= */
@@ -337,10 +371,9 @@ $("changeClient").onclick = changeClient;
 $("closeClient").onclick = closeClient;
 $("focusBtn").onclick = showFocus;
 $("todayBtn").onclick = exportTodayCSV;
-
-if ($("cameraBtn")) $("cameraBtn").onclick = addPhotoToClient;
-if ($("activateFull")) $("activateFull").onclick = activateWhatsApp;
-if ($("applyCode")) $("applyCode").onclick = applyCode;
+$("cameraBtn").onclick = addPhotoToClient;
+$("activateFull").onclick = activateWhatsApp;
+$("applyCode").onclick = applyCode;
 
 /* ================= INIT ================= */
 
