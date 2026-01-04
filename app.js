@@ -1,6 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js MEJORADO
- * Base de fotos por cliente (sin UI)
+ * FOCOWORK — app.js (ESTABLE + CÁMARA FUNCIONAL)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -28,9 +27,7 @@ function todayKey() {
 let userName = localStorage.getItem("focowork_user_name");
 if (!userName) {
   userName = prompt("Tu nombre (para los reportes):");
-  if (userName) {
-    localStorage.setItem("focowork_user_name", userName);
-  }
+  if (userName) localStorage.setItem("focowork_user_name", userName);
 }
 
 /* ================= STATE ================= */
@@ -120,10 +117,14 @@ function updateUI() {
 
   document.querySelectorAll(".activity").forEach(btn => {
     btn.classList.toggle(
-      "primary",
+      "active",
       btn.dataset.activity === state.currentActivity
     );
   });
+
+  // 📷 Cámara: visible SOLO con cliente activo
+  const cam = $("cameraBtn");
+  if (cam) cam.style.display = client ? "block" : "none";
 
   if ($("versionBox")) {
     $("versionBox").style.display = state.isFull ? "none" : "block";
@@ -150,7 +151,7 @@ function newClient() {
     active: true,
     total: 0,
     activities: {},
-    photos: [] // 📸 preparado para fotos
+    photos: [] // 📸 fotos por cliente
   };
 
   state.currentClientId = id;
@@ -216,6 +217,41 @@ function setActivity(act) {
   updateUI();
 }
 
+/* ================= 📷 CÁMARA ================= */
+
+function addPhotoToClient() {
+  if (!state.currentClientId) return;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const client = state.clients[state.currentClientId];
+      if (!client) return;
+
+      client.photos.push({
+        id: crypto.randomUUID(),
+        date: new Date().toISOString(),
+        data: reader.result
+      });
+
+      save();
+      alert("📸 Foto guardada en el cliente");
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  input.click();
+}
+
 /* ================= ENFOQUE ================= */
 
 function showFocus() {
@@ -246,7 +282,7 @@ Estado: ${estado}`
   );
 }
 
-/* ================= CSV HOY ================= */
+/* ================= CSV ================= */
 
 function exportTodayCSV() {
   const date = todayKey();
@@ -267,7 +303,7 @@ function exportTodayCSV() {
   URL.revokeObjectURL(url);
 }
 
-/* ================= FULL / ACTIVACIÓN ================= */
+/* ================= FULL ================= */
 
 function activateWhatsApp() {
   const msg = encodeURIComponent("Hola, quiero activar FocoWork");
@@ -278,13 +314,7 @@ function applyCode() {
   const input = $("activationCode");
   if (!input) return;
 
-  const code = input.value.trim();
-  if (!code) {
-    alert("Introduce un código");
-    return;
-  }
-
-  if (code === FULL_CODE) {
+  if (input.value.trim() === FULL_CODE) {
     state.isFull = true;
     localStorage.setItem("focowork_full", "true");
     save();
@@ -308,6 +338,7 @@ $("closeClient").onclick = closeClient;
 $("focusBtn").onclick = showFocus;
 $("todayBtn").onclick = exportTodayCSV;
 
+if ($("cameraBtn")) $("cameraBtn").onclick = addPhotoToClient;
 if ($("activateFull")) $("activateFull").onclick = activateWhatsApp;
 if ($("applyCode")) $("applyCode").onclick = applyCode;
 
