@@ -1,7 +1,6 @@
 /*************************************************
- * FOCOWORK – app.js DEFINITIVO
- * Sesión + total separados
- * Usuario inicial para reportes
+ * FOCOWORK — app.js MEJORADO
+ * Con feedback visual y mejor UX
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -42,9 +41,9 @@ let state = JSON.parse(localStorage.getItem("focowork_state")) || {
   currentClientId: null,
   currentActivity: null,
   lastTick: null,
-  sessionElapsed: 0,     // ⏱️ reloj grande (actividad)
-  clients: {},           // clientes
-  focus: {}              // enfoque diario
+  sessionElapsed: 0,
+  clients: {},
+  focus: {}
 };
 
 function save() {
@@ -82,14 +81,11 @@ function tick() {
   const client = state.clients[state.currentClientId];
   if (!client) return;
 
-  // total cliente
   client.total += elapsed;
 
-  // actividad cliente
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
-  // enfoque diario
   state.focus[state.currentActivity] =
     (state.focus[state.currentActivity] || 0) + elapsed;
 
@@ -112,18 +108,26 @@ function updateUI() {
 
   $("activityName").textContent = state.currentActivity || "—";
 
-  // ⏱️ reloj de sesión
   $("timer").textContent = client
     ? formatTime(state.sessionElapsed)
     : "00:00:00";
 
-  // 📦 total cliente
   if ($("clientTotal")) {
     $("clientTotal").textContent = client
       ? `Total cliente: ${formatTime(client.total)}`
       : "";
   }
 
+  // Actualizar botones de actividad
+  document.querySelectorAll(".activity").forEach(btn => {
+    if (btn.dataset.activity === state.currentActivity) {
+      btn.classList.add("primary");
+    } else {
+      btn.classList.remove("primary");
+    }
+  });
+
+  // Mostrar/ocultar versión box
   if ($("versionBox")) {
     $("versionBox").style.display = state.isFull ? "none" : "block";
   }
@@ -203,9 +207,12 @@ function closeClient() {
 /* ================= ACTIVIDADES ================= */
 
 function setActivity(act) {
-  if (!state.currentClientId) return;
+  if (!state.currentClientId) {
+    alert("Primero selecciona un cliente");
+    return;
+  }
   state.currentActivity = act;
-  state.sessionElapsed = 0;   // 🔑 reinicio SOLO sesión
+  state.sessionElapsed = 0;
   state.lastTick = Date.now();
   save();
   updateUI();
@@ -233,7 +240,7 @@ function showFocus() {
   }
 
   alert(
-`🎯 Enfoque diario – ${userName || "Usuario"}
+`🎯 Enfoque diario — ${userName || "Usuario"}
 
 ${detalle}
 Trabajo: ${pct}%
@@ -285,6 +292,7 @@ function applyCode() {
     save();
     updateUI();
     alert("✅ Versión completa activada");
+    input.value = "";
   } else {
     alert("❌ Código incorrecto");
   }
