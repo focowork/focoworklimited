@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FocoWork</title>
 
-  <link rel="manifest" href="manifest.json" />
+  <!-- PWA / Mobile -->
   <meta name="theme-color" content="#0b0b0b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,7 +16,7 @@
 <body>
   <div class="app">
 
-    <!-- HEADER -->
+    <!-- ================= HEADER ================= -->
     <header class="header">
       <div id="clientName" class="client-name">Sin cliente activo</div>
       <div id="activityName" class="activity-name">—</div>
@@ -24,7 +24,7 @@
       <div id="clientTotal" class="client-total"></div>
     </header>
 
-    <!-- ACTIVIDADES -->
+    <!-- ================= ACTIVIDADES ================= -->
     <section class="panel">
       <div class="grid activities">
         <button class="activity" data-activity="trabajo">🟦 Trabajo</button>
@@ -35,42 +35,43 @@
       </div>
     </section>
 
-    <!-- INFO CLIENTE / FOTOS -->
-    <section class="panel" id="clientInfoPanel">
+    <!-- ================= CLIENTE / FOTOS ================= -->
+    <section class="panel">
       <button id="cameraBtn" class="primary">
         📷 Añadir foto al cliente
       </button>
 
-      <div id="photoGallery" class="photo-gallery">
-        <!-- fotos renderizadas por JS -->
-      </div>
+      <div id="photoGallery" class="photo-gallery"></div>
     </section>
 
-    <!-- CLIENTES -->
+    <!-- ================= CLIENTES ================= -->
     <section class="panel">
       <div class="grid actions">
         <button id="newClient">➕ Nuevo</button>
         <button id="changeClient">🔄 Cambiar</button>
-        <!-- ⭐ NUEVO BOTÓN HISTÓRICO (NECESARIO) -->
         <button id="historyBtn">📂 Histórico</button>
         <button id="closeClient" class="danger">✅ Cerrar</button>
-        <button id="deleteClientBtn" class="danger" style="display:none;">
-  🗑️ Borrar este cliente
-  </button>
+        <button
+          id="deleteClientBtn"
+          class="danger"
+          style="display:none;"
+        >
+          🗑️ Borrar este cliente
+        </button>
       </div>
     </section>
 
-    <!-- FOOTER -->
+    <!-- ================= FOOTER ================= -->
     <footer class="footer">
       <button id="focusBtn">🎯 Enfoque</button>
-      <button id="todayBtn">📅 Hoy</button>
+      <button id="todayBtn">📄 CSV</button>
     </footer>
 
-    <!-- VERSIÓN -->
+    <!-- ================= VERSIÓN / LICENCIA ================= -->
     <div id="versionBox" class="version-box">
       <div class="lock">
         🔒 <strong>Versión de prueba</strong><br />
-        Máximo 2 clientes activos simultáneamente
+        Máximo 2 clientes activos
       </div>
 
       <button id="activateFull" class="primary">
@@ -90,6 +91,7 @@
 
   </div>
 
+  <!-- ================= SCRIPT ================= -->
   <script src="app.js"></script>
 </body>
-  </html>
+</html>
