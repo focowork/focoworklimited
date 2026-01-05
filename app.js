@@ -437,6 +437,36 @@ $("focusBtn").onclick = showFocus;
 $("todayBtn").onclick = exportTodayCSV;
 $("applyCode").onclick = applyCode;
 $("activateFull").onclick = activateWhatsApp;
+function deleteCurrentClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client || client.active) return;
+
+  const msg =
+    `Vas a eliminar DEFINITIVAMENTE este cliente:\n\n` +
+    `Cliente: ${client.name}\n` +
+    `Tiempo total: ${formatTime(client.total)}\n` +
+    `Fotos: ${client.photos.length}\n\n` +
+    `Esta acción no se puede deshacer.\n\n` +
+    `Escribe BORRAR para confirmar:`;
+
+  const confirmText = prompt(msg);
+
+  if (confirmText !== "BORRAR") {
+    alert("Operación cancelada");
+    return;
+  }
+
+  delete state.clients[state.currentClientId];
+  state.currentClientId = null;
+  state.currentActivity = null;
+  state.sessionElapsed = 0;
+  state.lastTick = null;
+
+  save();
+  updateUI();
+
+  alert("Cliente eliminado correctamente");
+}
 
 /* ================= INIT ================= */
 
