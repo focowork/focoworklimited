@@ -1,12 +1,11 @@
 /*************************************************
- * FOCOWORK — app.js (ESTABLE FINAL + HISTÓRIC + BORRADO)
+ * FOCOWORK — app.js (FINAL ESTABLE V1.0)
  *************************************************/
 
 /* ================= CONFIG ================= */
 
 const WHATSAPP_PHONE = "34649383847";
 
-/* 🔐 CÓDIGOS ÚNICOS DE LICENCIA */
 const VALID_CODES = [
   "FW-ALQ2-VBP5","FW-QAWQ-WQ6P","FW-R40N-ZP88","FW-1DX3-2VQH","FW-0YDN-OE9V",
   "FW-60LF-VRRF","FW-FI6K-UEMV","FW-9DN2-XTFN","FW-SOEG-XPL3","FW-C9XQ-0JFT",
@@ -93,6 +92,7 @@ function tick() {
   state.lastTick = now;
   state.sessionElapsed += elapsed;
   client.total += elapsed;
+
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
@@ -104,6 +104,22 @@ function tick() {
 }
 
 setInterval(tick, 1000);
+
+/* ================= ACTIVIDADES ================= */
+
+function setActivity(activity) {
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.active) {
+    alert("Primero selecciona un cliente activo");
+    return;
+  }
+
+  state.currentActivity = activity;
+  state.sessionElapsed = 0;
+  state.lastTick = Date.now();
+  save();
+  updateUI();
+}
 
 /* ================= UI ================= */
 
@@ -141,6 +157,7 @@ function updateUI() {
   }
 
   $("versionBox").style.display = state.isFull ? "none" : "block";
+
   renderPhotoGallery();
 }
 
@@ -151,8 +168,10 @@ function newClient() {
   if (!name) return;
 
   const activeClients = Object.values(state.clients).filter(c => c.active);
-  if (!state.isFull && activeClients.length >= 2)
-    return alert("Versión demo: máximo 2 clientes activos");
+  if (!state.isFull && activeClients.length >= 2) {
+    alert("Versión demo: máximo 2 clientes activos");
+    return;
+  }
 
   const id = uid();
   state.clients[id] = {
@@ -168,11 +187,11 @@ function newClient() {
   state.currentActivity = "trabajo";
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
+
   save();
   updateUI();
 }
 
-/* SOLO ACTIVOS */
 function changeClient() {
   const actives = Object.values(state.clients).filter(c => c.active);
   if (!actives.length) return alert("No hay clientes activos");
@@ -185,11 +204,28 @@ function changeClient() {
   state.currentActivity = "trabajo";
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
+
   save();
   updateUI();
 }
 
-/* HISTÓRICO + BUSCADOR */
+function closeClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  client.active = false;
+  alert(`Cliente cerrado:\n${client.name}\nTotal: ${formatTime(client.total)}`);
+
+  state.currentClientId = null;
+  state.currentActivity = null;
+  state.lastTick = null;
+
+  save();
+  updateUI();
+}
+
+/* ================= HISTÓRICO ================= */
+
 function showHistory() {
   const closed = Object.values(state.clients).filter(c => !c.active);
   if (!closed.length) return alert("No hay clientes cerrados");
@@ -209,19 +245,7 @@ function showHistory() {
   state.currentActivity = null;
   state.sessionElapsed = 0;
   state.lastTick = null;
-  updateUI();
-}
 
-function closeClient() {
-  const client = state.clients[state.currentClientId];
-  if (!client) return;
-
-  client.active = false;
-  alert(`Cliente cerrado:\n${client.name}\nTotal: ${formatTime(client.total)}`);
-  state.currentClientId = null;
-  state.currentActivity = null;
-  state.lastTick = null;
-  save();
   updateUI();
 }
 
@@ -245,9 +269,156 @@ function deleteCurrentClient() {
   state.currentClientId = null;
   state.currentActivity = null;
   state.lastTick = null;
+
   save();
   updateUI();
   alert("Cliente eliminado");
+}
+
+/* ================= FOTOS ================= */
+
+function addPhotoToClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1024;
+        let { width, height } = img;
+
+        if (width > MAX) {
+          height *= MAX / width;
+          width = MAX;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+
+        client.photos.push({
+          id: uid(),
+          date: new Date().toISOString(),
+          data: canvas.toDataURL("image/jpeg", 0.7)
+        });
+
+        save();
+        renderPhotoGallery();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  input.click();
+}
+
+function renderPhotoGallery() {
+  const gallery = $("photoGallery");
+  if (!gallery) return;
+  gallery.innerHTML = "";
+
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.photos.length) return;
+
+  [...client.photos]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .forEach(p => {
+      const img = document.createElement("img");
+      img.src = p.data;
+      img.className = "photo-thumb";
+
+      img.onclick = () => {
+        const w = window.open();
+        if (w) {
+          w.document.write(
+            `<img src="${p.data}" style="width:100%;background:#000">`
+          );
+        }
+      };
+
+      img.oncontextmenu = (e) => {
+        e.preventDefault();
+        if (confirm("¿Eliminar esta foto?")) {
+          client.photos = client.photos.filter(f => f.id !== p.id);
+          save();
+          renderPhotoGallery();
+        }
+      };
+
+      gallery.appendChild(img);
+    });
+}
+
+/* ================= ENFOQUE ================= */
+
+function showFocus() {
+  const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
+  if (!total) return alert("Aún no hay datos");
+
+  let msg = `🎯 Enfoque diario — ${userName}\n\n`;
+  for (const act in state.focus) {
+    const t = state.focus[act];
+    const pct = Math.round((t / total) * 100);
+    msg += `${act}: ${formatTime(t)} (${pct}%)\n`;
+  }
+  msg += `\nTotal: ${formatTime(total)}`;
+  alert(msg);
+}
+
+/* ================= CSV ================= */
+
+function exportTodayCSV() {
+  let csv = "Usuario,Cliente,Tiempo\n";
+  Object.values(state.clients).forEach(c => {
+    csv += `${userName},${c.name},${formatTime(c.total)}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `focowork_${todayKey()}.csv`;
+  a.click();
+}
+
+/* ================= LICENCIA ================= */
+
+function activateWhatsApp() {
+  const msg = encodeURIComponent(
+    "Hola, quiero activar FocoWork. ¿Cómo procedemos?"
+  );
+  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${msg}`, "_blank");
+}
+
+function applyCode() {
+  const input = $("activationCode");
+  if (!input) return;
+
+  const code = input.value.trim().toUpperCase();
+  if (!VALID_CODES.includes(code)) {
+    alert("Código no válido");
+    return;
+  }
+
+  state.isFull = true;
+  state.license = code;
+  localStorage.setItem("focowork_full", "true");
+  localStorage.setItem("focowork_license", code);
+
+  save();
+  updateUI();
+  alert("Versión completa activada");
 }
 
 /* ================= EVENTOS ================= */
@@ -264,8 +435,8 @@ $("deleteClientBtn").onclick = deleteCurrentClient;
 $("cameraBtn").onclick = addPhotoToClient;
 $("focusBtn").onclick = showFocus;
 $("todayBtn").onclick = exportTodayCSV;
-$("applyCode").onclick = applyCode;
 $("activateFull").onclick = activateWhatsApp;
+$("applyCode").onclick = applyCode;
 
 /* ================= INIT ================= */
 
