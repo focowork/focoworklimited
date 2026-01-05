@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (FINAL VENDIBLE + HISTÓRIC)
+ * FOCOWORK — app.js (ESTABLE FINAL + UX POLIDA)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -57,7 +57,7 @@ let state = JSON.parse(localStorage.getItem("focowork_state")) || {
   currentActivity: null,
   lastTick: null,
   sessionElapsed: 0,
-  clients: {},   // activos y cerrados
+  clients: {},
   focus: {}
 };
 
@@ -68,9 +68,8 @@ function save() {
 /* ================= DAILY RESET ================= */
 
 function resetDayIfNeeded() {
-  const today = todayKey();
-  if (state.day !== today) {
-    state.day = today;
+  if (state.day !== todayKey()) {
+    state.day = todayKey();
     state.focus = {};
     save();
   }
@@ -121,9 +120,8 @@ function updateUI() {
     : "Sin cliente activo";
 
   $("activityName").textContent = state.currentActivity || "—";
-  $("timer").textContent = client && client.active
-    ? formatTime(state.sessionElapsed)
-    : "00:00:00";
+  $("timer").textContent =
+    client && client.active ? formatTime(state.sessionElapsed) : "00:00:00";
 
   if ($("clientTotal")) {
     $("clientTotal").textContent = client
@@ -177,31 +175,45 @@ function newClient() {
   updateUI();
 }
 
+/* ⭐ SOLO ACTIVOS */
 function changeClient() {
-  const clients = Object.values(state.clients);
-  if (!clients.length) return alert("No hay clientes");
+  const actives = Object.values(state.clients).filter(c => c.active);
+  if (!actives.length) return alert("No hay clientes activos");
 
-  const list = clients.map((c, i) =>
-    `${i + 1}. ${c.name}${c.active ? "" : " (cerrado)"}`
-  ).join("\n");
+  const list = actives
+    .map((c, i) => `${i + 1}. ${c.name}`)
+    .join("\n");
 
-  const sel = parseInt(prompt("Clientes:\n" + list), 10);
-  if (!sel || !clients[sel - 1]) return;
+  const sel = parseInt(prompt("Clientes activos:\n" + list), 10);
+  if (!sel || !actives[sel - 1]) return;
 
-  const client = clients[sel - 1];
+  const client = actives[sel - 1];
   state.currentClientId = client.id;
-
-  if (client.active) {
-    state.currentActivity = "trabajo";
-    state.sessionElapsed = 0;
-    state.lastTick = Date.now();
-  } else {
-    state.currentActivity = null;
-    state.sessionElapsed = 0;
-    state.lastTick = null;
-  }
+  state.currentActivity = "trabajo";
+  state.sessionElapsed = 0;
+  state.lastTick = Date.now();
 
   save();
+  updateUI();
+}
+
+/* ⭐ SOLO HISTÓRICO */
+function showHistory() {
+  const closed = Object.values(state.clients).filter(c => !c.active);
+  if (!closed.length) return alert("No hay clientes cerrados");
+
+  const list = closed
+    .map((c, i) => `${i + 1}. ${c.name}`)
+    .join("\n");
+
+  const sel = parseInt(prompt("Histórico de clientes:\n" + list), 10);
+  if (!sel || !closed[sel - 1]) return;
+
+  state.currentClientId = closed[sel - 1].id;
+  state.currentActivity = null;
+  state.sessionElapsed = 0;
+  state.lastTick = null;
+
   updateUI();
 }
 
@@ -210,7 +222,6 @@ function closeClient() {
   if (!client) return;
 
   client.active = false;
-
   alert(
     `Cliente cerrado:\n${client.name}\nTiempo total: ${formatTime(client.total)}`
   );
@@ -228,7 +239,7 @@ function closeClient() {
 
 function setActivity(act) {
   const client = state.clients[state.currentClientId];
-  if (!client || !client.active) return alert("Cliente no activo");
+  if (!client || !client.active) return;
 
   state.currentActivity = act;
   state.sessionElapsed = 0;
@@ -237,7 +248,7 @@ function setActivity(act) {
   updateUI();
 }
 
-/* ================= 📷 FOTOS ================= */
+/* ================= 📷 FOTOS (igual que abans) ================= */
 
 function addPhotoToClient() {
   const client = state.clients[state.currentClientId];
@@ -370,7 +381,6 @@ function exportTodayCSV() {
 
 function applyCode() {
   const code = $("activationCode").value.trim().toUpperCase();
-
   if (state.isFull) return alert("Versión completa ya activada");
 
   if (VALID_CODES.includes(code)) {
@@ -401,6 +411,7 @@ document.querySelectorAll(".activity").forEach(b =>
 
 $("newClient").onclick = newClient;
 $("changeClient").onclick = changeClient;
+$("historyBtn").onclick = showHistory;   // ⭐ nou botó
 $("closeClient").onclick = closeClient;
 $("cameraBtn").onclick = addPhotoToClient;
 $("focusBtn").onclick = showFocus;
