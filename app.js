@@ -202,20 +202,39 @@ function showHistory() {
   const closed = Object.values(state.clients).filter(c => !c.active);
   if (!closed.length) return alert("No hay clientes cerrados");
 
-  const list = closed
+  const query = prompt(
+    "Buscar en histórico (deja vacío para ver todos):"
+  );
+
+  const filtered = query
+    ? closed.filter(c =>
+        c.name.toLowerCase().includes(query.toLowerCase())
+      )
+    : closed;
+
+  if (!filtered.length) {
+    alert("No se encontraron clientes con ese criterio");
+    return;
+  }
+
+  const list = filtered
     .map((c, i) => `${i + 1}. ${c.name}`)
     .join("\n");
 
-  const sel = parseInt(prompt("Histórico de clientes:\n" + list), 10);
-  if (!sel || !closed[sel - 1]) return;
+  const sel = parseInt(
+    prompt("Histórico de clientes:\n" + list),
+    10
+  );
 
-  state.currentClientId = closed[sel - 1].id;
+  if (!sel || !filtered[sel - 1]) return;
+
+  state.currentClientId = filtered[sel - 1].id;
   state.currentActivity = null;
   state.sessionElapsed = 0;
   state.lastTick = null;
 
   updateUI();
-}
+         }
 
 function closeClient() {
   const client = state.clients[state.currentClientId];
