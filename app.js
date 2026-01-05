@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (ESTABLE FINAL)
+ * FOCOWORK — app.js (ESTABLE FINAL + CSV PRO)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -254,7 +254,7 @@ function addPhotoToClient() {
   input.click();
 }
 
-/* ================= 📂 GALERÍA (TAP / LONG PRESS) ================= */
+/* ================= 📂 GALERÍA ================= */
 
 function renderPhotoGallery() {
   const gallery = $("photoGallery");
@@ -272,17 +272,15 @@ function renderPhotoGallery() {
 
       let pressTimer = null;
 
-      // TAP → ver foto grande
       img.onclick = () => {
         const w = window.open();
         if (w) {
           w.document.write(
-            `<img src="${p.data}" style="width:100%;height:auto;background:#000">`
+            `<img src="${p.data}" style="width:100%;background:#000">`
           );
         }
       };
 
-      // LONG PRESS → borrar
       img.onpointerdown = () => {
         pressTimer = setTimeout(() => {
           if (confirm("¿Eliminar esta foto del cliente?")) {
@@ -294,17 +292,14 @@ function renderPhotoGallery() {
       };
 
       img.onpointerup = img.onpointerleave = () => {
-        if (pressTimer) {
-          clearTimeout(pressTimer);
-          pressTimer = null;
-        }
+        if (pressTimer) clearTimeout(pressTimer);
       };
 
       gallery.appendChild(img);
     });
 }
 
-/* ================= 🎯 ENFOQUE DETALLADO ================= */
+/* ================= 🎯 ENFOQUE ================= */
 
 function showFocus() {
   const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
@@ -316,30 +311,41 @@ function showFocus() {
     const pct = Math.round((t / total) * 100);
     msg += `${act}: ${formatTime(t)} (${pct}%)\n`;
   }
-
   msg += `\nTotal: ${formatTime(total)}`;
   alert(msg);
 }
 
-/* ================= CSV ================= */
+/* ================= 📄 CSV PROFESIONAL ================= */
 
 function exportTodayCSV() {
-  let csv = "Usuario,Cliente,Tiempo\n";
-  Object.values(state.clients).forEach(c => {
-    csv += `${userName || ""},${c.name},${formatTime(c.total)}\n`;
+  const client = state.clients[state.currentClientId];
+  if (!client) return alert("Selecciona un cliente");
+
+  let csv = "";
+  csv += "FocoWork Report\n";
+  csv += `Professional,${userName || ""}\n`;
+  csv += `Client,${client.name}\n`;
+  csv += `Date,${todayKey()}\n`;
+  csv += "\n";
+
+  csv += "Activity,Time\n";
+  Object.entries(client.activities).forEach(([act, sec]) => {
+    csv += `${act},${formatTime(sec)}\n`;
   });
+  csv += `Total,${formatTime(client.total)}\n`;
 
   const blob = new Blob([csv], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `focowork_${todayKey()}.csv`;
+  a.download = `FocoWork_${client.name}_${todayKey()}.csv`;
   a.click();
 }
 
 /* ================= FULL ================= */
 
 function activateWhatsApp() {
-  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=Hola quiero activar focowork`, "_blank");
+  const msg = encodeURIComponent("Hola, quiero activar FocoWork");
+  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${msg}`, "_blank");
 }
 
 function applyCode() {
