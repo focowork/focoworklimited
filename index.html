@@ -93,5 +93,33 @@
 
   <!-- ================= SCRIPT ================= -->
   <script src="app.js"></script>
+  <!-- MODAL ENFOQUE -->
+<div id="modalEnfoque" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-icon">🎯</span>
+      <div>
+        <h2 class="modal-title">Enfoque diario</h2>
+        <p class="modal-subtitle" id="modalUserName"></p>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="activity-list" id="modalActivityList"></div>
+      
+      <div class="total-stats">
+        <div class="total-time">
+          Total trabajado: <strong id="modalTotalTime"></strong>
+        </div>
+      </div>
+
+      <div id="modalFocusState" class="focus-state"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-close" onclick="closeEnfoqueModal()">Aceptar</button>
+    </div>
+  </div>
+        </div>
 </body>
 </html>
