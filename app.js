@@ -1,11 +1,24 @@
 /*************************************************
- * FOCOWORK — app.js (ESTABLE FINAL + CSV PRO)
+ * FOCOWORK — app.js (VERSIÓN VENDIBLE FINAL)
  *************************************************/
 
 /* ================= CONFIG ================= */
 
-const FULL_CODE = "FOCOWORK-FULL-2026";
 const WHATSAPP_PHONE = "34649383847";
+
+/* 🔐 CÓDIGOS ÚNICOS DE LICENCIA */
+const VALID_CODES = [
+  "FW-ALQ2-VBP5","FW-QAWQ-WQ6P","FW-R40N-ZP88","FW-1DX3-2VQH","FW-0YDN-OE9V",
+  "FW-60LF-VRRF","FW-FI6K-UEMV","FW-9DN2-XTFN","FW-SOEG-XPL3","FW-C9XQ-0JFT",
+  "FW-FUVX-4CU5","FW-EXQX-G8ZP","FW-7H62-FMN7","FW-VQMQ-2JYG","FW-KU33-TR6I",
+  "FW-7EEH-K1WG","FW-83OX-GNWZ","FW-5YIB-7SJE","FW-BBBF-CT47","FW-BNF4-DJ3Y",
+  "FW-GSMY-XNI2","FW-DF0K-8VYO","FW-GCLP-5HXT","FW-AIE9-N9BX","FW-ROYX-JFJ4",
+  "FW-7ZW0-2BQ6","FW-6ZIS-BXHC","FW-4R02-LYE9","FW-M5IR-2UDM","FW-LCM7-R3Q0",
+  "FW-CFA9-B81K","FW-5DJR-4LGS","FW-X1FH-JXN9","FW-C19P-17I0","FW-UJ5B-RS3K",
+  "FW-G0ZE-Z2P5","FW-IJY6-TM38","FW-G5WI-6VE3","FW-GPT6-XGXY","FW-NQG5-UBBJ",
+  "FW-RAGX-PRAM","FW-RFA0-IH08","FW-9QGF-ZTTN","FW-ZK0F-5U47","FW-GSLS-ME29",
+  "FW-0ODT-JU2R","FW-T299-WCQS","FW-NOEX-H6QO","FW-NPV1-NGO2","FW-2QQU-X1R1"
+];
 
 /* ================= HELPERS ================= */
 
@@ -30,7 +43,7 @@ function todayKey() {
 
 let userName = localStorage.getItem("focowork_user_name");
 if (!userName) {
-  userName = prompt("Tu nombre (para los reportes):");
+  userName = prompt("Tu nombre (para reportes):");
   if (userName) localStorage.setItem("focowork_user_name", userName);
 }
 
@@ -38,6 +51,7 @@ if (!userName) {
 
 let state = JSON.parse(localStorage.getItem("focowork_state")) || {
   isFull: localStorage.getItem("focowork_full") === "true",
+  license: localStorage.getItem("focowork_license") || null,
   day: todayKey(),
   currentClientId: null,
   currentActivity: null,
@@ -122,8 +136,9 @@ function updateUI() {
   });
 
   $("cameraBtn").style.display = client ? "block" : "none";
-  renderPhotoGallery();
   $("versionBox").style.display = state.isFull ? "none" : "block";
+
+  renderPhotoGallery();
 }
 
 /* ================= CLIENTES ================= */
@@ -175,12 +190,10 @@ function changeClient() {
 }
 
 function closeClient() {
-  const id = state.currentClientId;
-  if (!id) return;
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
 
-  const client = state.clients[id];
   client.active = false;
-
   alert(`Cliente: ${client.name}\nTiempo total: ${formatTime(client.total)}`);
 
   state.currentClientId = null;
@@ -195,7 +208,7 @@ function closeClient() {
 /* ================= ACTIVIDADES ================= */
 
 function setActivity(act) {
-  if (!state.currentClientId) return alert("Primero selecciona un cliente");
+  if (!state.currentClientId) return alert("Selecciona un cliente");
   state.currentActivity = act;
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
@@ -203,7 +216,7 @@ function setActivity(act) {
   updateUI();
 }
 
-/* ================= 📷 CÁMARA ================= */
+/* ================= 📷 FOTOS ================= */
 
 function addPhotoToClient() {
   if (!state.currentClientId) return;
@@ -219,45 +232,40 @@ function addPhotoToClient() {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setTimeout(() => {
-        const img = new Image();
-        img.onload = () => {
-          const MAX = 1024;
-          let { width, height } = img;
-          if (width > MAX) {
-            height *= MAX / width;
-            width = MAX;
-          }
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1024;
+        let { width, height } = img;
+        if (width > MAX) {
+          height *= MAX / width;
+          width = MAX;
+        }
 
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
 
-          const data = canvas.toDataURL("image/jpeg", 0.7);
-          state.clients[state.currentClientId].photos.push({
-            id: uid(),
-            date: new Date().toISOString(),
-            data
-          });
+        state.clients[state.currentClientId].photos.push({
+          id: uid(),
+          date: new Date().toISOString(),
+          data: canvas.toDataURL("image/jpeg", 0.7)
+        });
 
-          save();
-          renderPhotoGallery();
-        };
-        img.src = reader.result;
-      }, 0);
+        save();
+        renderPhotoGallery();
+      };
+      img.src = reader.result;
     };
-
     reader.readAsDataURL(file);
   };
 
   input.click();
 }
 
-/* ================= 📂 GALERÍA ================= */
-
 function renderPhotoGallery() {
   const gallery = $("photoGallery");
+  if (!gallery) return;
   gallery.innerHTML = "";
 
   const client = state.clients[state.currentClientId];
@@ -275,15 +283,13 @@ function renderPhotoGallery() {
       img.onclick = () => {
         const w = window.open();
         if (w) {
-          w.document.write(
-            `<img src="${p.data}" style="width:100%;background:#000">`
-          );
+          w.document.write(`<img src="${p.data}" style="width:100%">`);
         }
       };
 
       img.onpointerdown = () => {
         pressTimer = setTimeout(() => {
-          if (confirm("¿Eliminar esta foto del cliente?")) {
+          if (confirm("¿Eliminar esta foto?")) {
             client.photos = client.photos.filter(f => f.id !== p.id);
             save();
             renderPhotoGallery();
@@ -305,7 +311,7 @@ function showFocus() {
   const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
   if (!total) return alert("Aún no hay datos de hoy");
 
-  let msg = `🎯 Enfoque diario — ${userName || "Usuario"}\n\n`;
+  let msg = `🎯 Enfoque diario — ${userName || ""}\n\n`;
   for (const act in state.focus) {
     const t = state.focus[act];
     const pct = Math.round((t / total) * 100);
@@ -323,12 +329,11 @@ function exportTodayCSV() {
 
   let csv = "";
   csv += "FocoWork Report\n";
-  csv += `Professional,${userName || ""}\n`;
-  csv += `Client,${client.name}\n`;
-  csv += `Date,${todayKey()}\n`;
-  csv += "\n";
+  csv += `Profesional,${userName || ""}\n`;
+  csv += `Cliente,${client.name}\n`;
+  csv += `Fecha,${todayKey()}\n\n`;
 
-  csv += "Activity,Time\n";
+  csv += "Actividad,Tiempo\n";
   Object.entries(client.activities).forEach(([act, sec]) => {
     csv += `${act},${formatTime(sec)}\n`;
   });
@@ -341,21 +346,34 @@ function exportTodayCSV() {
   a.click();
 }
 
-/* ================= FULL ================= */
+/* ================= 🔐 ACTIVACIÓN ================= */
+
+function applyCode() {
+  const code = $("activationCode").value.trim().toUpperCase();
+
+  if (state.isFull) {
+    alert("La versión completa ya está activada");
+    return;
+  }
+
+  if (VALID_CODES.includes(code)) {
+    state.isFull = true;
+    state.license = code;
+    localStorage.setItem("focowork_full", "true");
+    localStorage.setItem("focowork_license", code);
+    save();
+    updateUI();
+    alert("Versión completa activada correctamente");
+  } else {
+    alert("Código incorrecto");
+  }
+}
+
+/* ================= 📲 WHATSAPP ================= */
 
 function activateWhatsApp() {
   const msg = encodeURIComponent("Hola, quiero activar FocoWork");
   window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${msg}`, "_blank");
-}
-
-function applyCode() {
-  if ($("activationCode").value.trim() === FULL_CODE) {
-    state.isFull = true;
-    localStorage.setItem("focowork_full", "true");
-    save();
-    updateUI();
-    alert("Versión completa activada");
-  } else alert("Código incorrecto");
 }
 
 /* ================= EVENTS ================= */
@@ -367,11 +385,11 @@ document.querySelectorAll(".activity").forEach(b =>
 $("newClient").onclick = newClient;
 $("changeClient").onclick = changeClient;
 $("closeClient").onclick = closeClient;
+$("cameraBtn").onclick = addPhotoToClient;
 $("focusBtn").onclick = showFocus;
 $("todayBtn").onclick = exportTodayCSV;
-$("cameraBtn").onclick = addPhotoToClient;
-$("activateFull").onclick = activateWhatsApp;
 $("applyCode").onclick = applyCode;
+$("activateFull").onclick = activateWhatsApp;
 
 /* ================= INIT ================= */
 
