@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (VERSIÓN VENDIBLE FINAL)
+ * FOCOWORK — app.js (FINAL VENDIBLE + HISTÓRIC)
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -57,7 +57,7 @@ let state = JSON.parse(localStorage.getItem("focowork_state")) || {
   currentActivity: null,
   lastTick: null,
   sessionElapsed: 0,
-  clients: {},
+  clients: {},   // activos y cerrados
   focus: {}
 };
 
@@ -117,11 +117,11 @@ function updateUI() {
     : null;
 
   $("clientName").textContent = client
-    ? `Cliente: ${client.name}`
+    ? `Cliente: ${client.name}${client.active ? "" : " (cerrado)"}`
     : "Sin cliente activo";
 
   $("activityName").textContent = state.currentActivity || "—";
-  $("timer").textContent = client
+  $("timer").textContent = client && client.active
     ? formatTime(state.sessionElapsed)
     : "00:00:00";
 
@@ -132,10 +132,13 @@ function updateUI() {
   }
 
   document.querySelectorAll(".activity").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.activity === state.currentActivity);
+    btn.classList.toggle(
+      "active",
+      btn.dataset.activity === state.currentActivity
+    );
   });
 
-  $("cameraBtn").style.display = client ? "block" : "none";
+  $("cameraBtn").style.display = client && client.active ? "block" : "none";
   $("versionBox").style.display = state.isFull ? "none" : "block";
 
   renderPhotoGallery();
@@ -144,7 +147,9 @@ function updateUI() {
 /* ================= CLIENTES ================= */
 
 function newClient() {
-  const name = prompt("Nombre del cliente:");
+  const name = prompt(
+    "Nombre del cliente + descripción del trabajo\nEj: Juan – Reforma baño"
+  );
   if (!name) return;
 
   const activeClients = Object.values(state.clients).filter(c => c.active);
@@ -173,17 +178,28 @@ function newClient() {
 }
 
 function changeClient() {
-  const actives = Object.values(state.clients).filter(c => c.active);
-  if (!actives.length) return alert("No hay clientes activos");
+  const clients = Object.values(state.clients);
+  if (!clients.length) return alert("No hay clientes");
 
-  const list = actives.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
-  const sel = parseInt(prompt("Clientes activos:\n" + list), 10);
-  if (!sel || !actives[sel - 1]) return;
+  const list = clients.map((c, i) =>
+    `${i + 1}. ${c.name}${c.active ? "" : " (cerrado)"}`
+  ).join("\n");
 
-  state.currentClientId = actives[sel - 1].id;
-  state.currentActivity = "trabajo";
-  state.sessionElapsed = 0;
-  state.lastTick = Date.now();
+  const sel = parseInt(prompt("Clientes:\n" + list), 10);
+  if (!sel || !clients[sel - 1]) return;
+
+  const client = clients[sel - 1];
+  state.currentClientId = client.id;
+
+  if (client.active) {
+    state.currentActivity = "trabajo";
+    state.sessionElapsed = 0;
+    state.lastTick = Date.now();
+  } else {
+    state.currentActivity = null;
+    state.sessionElapsed = 0;
+    state.lastTick = null;
+  }
 
   save();
   updateUI();
@@ -194,7 +210,10 @@ function closeClient() {
   if (!client) return;
 
   client.active = false;
-  alert(`Cliente: ${client.name}\nTiempo total: ${formatTime(client.total)}`);
+
+  alert(
+    `Cliente cerrado:\n${client.name}\nTiempo total: ${formatTime(client.total)}`
+  );
 
   state.currentClientId = null;
   state.currentActivity = null;
@@ -208,7 +227,9 @@ function closeClient() {
 /* ================= ACTIVIDADES ================= */
 
 function setActivity(act) {
-  if (!state.currentClientId) return alert("Selecciona un cliente");
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.active) return alert("Cliente no activo");
+
   state.currentActivity = act;
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
@@ -219,7 +240,8 @@ function setActivity(act) {
 /* ================= 📷 FOTOS ================= */
 
 function addPhotoToClient() {
-  if (!state.currentClientId) return;
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.active) return;
 
   const input = document.createElement("input");
   input.type = "file";
@@ -246,7 +268,7 @@ function addPhotoToClient() {
         canvas.height = height;
         canvas.getContext("2d").drawImage(img, 0, 0, width, height);
 
-        state.clients[state.currentClientId].photos.push({
+        client.photos.push({
           id: uid(),
           date: new Date().toISOString(),
           data: canvas.toDataURL("image/jpeg", 0.7)
@@ -282,9 +304,7 @@ function renderPhotoGallery() {
 
       img.onclick = () => {
         const w = window.open();
-        if (w) {
-          w.document.write(`<img src="${p.data}" style="width:100%">`);
-        }
+        if (w) w.document.write(`<img src="${p.data}" style="width:100%">`);
       };
 
       img.onpointerdown = () => {
@@ -311,7 +331,7 @@ function showFocus() {
   const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
   if (!total) return alert("Aún no hay datos de hoy");
 
-  let msg = `🎯 Enfoque diario — ${userName || ""}\n\n`;
+  let msg = `🎯 Enfoque diario — ${userName}\n\n`;
   for (const act in state.focus) {
     const t = state.focus[act];
     const pct = Math.round((t / total) * 100);
@@ -329,13 +349,13 @@ function exportTodayCSV() {
 
   let csv = "";
   csv += "FocoWork Report\n";
-  csv += `Profesional,${userName || ""}\n`;
+  csv += `Profesional,${userName}\n`;
   csv += `Cliente,${client.name}\n`;
   csv += `Fecha,${todayKey()}\n\n`;
 
   csv += "Actividad,Tiempo\n";
-  Object.entries(client.activities).forEach(([act, sec]) => {
-    csv += `${act},${formatTime(sec)}\n`;
+  Object.entries(client.activities).forEach(([a, s]) => {
+    csv += `${a},${formatTime(s)}\n`;
   });
   csv += `Total,${formatTime(client.total)}\n`;
 
@@ -351,10 +371,7 @@ function exportTodayCSV() {
 function applyCode() {
   const code = $("activationCode").value.trim().toUpperCase();
 
-  if (state.isFull) {
-    alert("La versión completa ya está activada");
-    return;
-  }
+  if (state.isFull) return alert("Versión completa ya activada");
 
   if (VALID_CODES.includes(code)) {
     state.isFull = true;
