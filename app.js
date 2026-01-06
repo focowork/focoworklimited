@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK – app.js (V2.1 - CON WORKPAD)
+ * FOCOWORK – app.js (V2.2 - WORKPAD CORREGIDO)
  * Sin alerts ni prompts, todo con modales personalizados
  *************************************************/
 
@@ -148,29 +148,52 @@ function setActivity(activity) {
   updateUI();
 }
 
-/* ================= WORKPAD (NOTAS) ================= */
+/* ================= WORKPAD (NOTAS) - CORREGIDO ================= */
+
+let workpadTimeout = null;
+let isWorkpadInitialized = false;
 
 function updateWorkpad() {
   const workpadArea = $('clientWorkpad');
   const client = state.clients[state.currentClientId];
   
   if (!workpadArea || !client) {
-    if (workpadArea) workpadArea.style.display = 'none';
+    if (workpadArea) {
+      workpadArea.style.display = 'none';
+      isWorkpadInitialized = false;
+    }
     return;
   }
 
   workpadArea.style.display = 'block';
-  workpadArea.value = client.notes || '';
   
-  // Guardado automático con debounce
-  let saveTimeout;
-  workpadArea.oninput = () => {
-    clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => {
-      client.notes = workpadArea.value;
-      save();
-    }, 500);
-  };
+  // Solo actualizar el valor si es necesario (evita resetear cursor)
+  const savedNote = client.notes || '';
+  if (workpadArea.value !== savedNote && !isWorkpadInitialized) {
+    workpadArea.value = savedNote;
+  }
+  
+  // Configurar listener solo una vez
+  if (!isWorkpadInitialized) {
+    workpadArea.oninput = handleWorkpadInput;
+    isWorkpadInitialized = true;
+  }
+}
+
+function handleWorkpadInput(e) {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  // Guardar en memoria inmediatamente (sin tocar el DOM)
+  client.notes = e.target.value;
+
+  // Limpiar timeout anterior
+  clearTimeout(workpadTimeout);
+
+  // Guardar a localStorage después de 1 segundo sin escribir
+  workpadTimeout = setTimeout(() => {
+    save();
+  }, 1000);
 }
 
 /* ================= UI ================= */
@@ -248,6 +271,7 @@ function confirmNewClient() {
   state.currentActivity = "trabajo";
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
+  isWorkpadInitialized = false; // Reset workpad
 
   save();
   updateUI();
@@ -283,6 +307,7 @@ function selectClient(clientId) {
   state.currentActivity = "trabajo";
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
+  isWorkpadInitialized = false; // Reset workpad
 
   save();
   updateUI();
@@ -308,6 +333,7 @@ function confirmCloseClient() {
   state.currentClientId = null;
   state.currentActivity = null;
   state.lastTick = null;
+  isWorkpadInitialized = false; // Reset workpad
 
   save();
   updateUI();
@@ -360,6 +386,7 @@ function selectHistoryClient(clientId) {
   state.currentActivity = null;
   state.sessionElapsed = 0;
   state.lastTick = null;
+  isWorkpadInitialized = false; // Reset workpad
 
   updateUI();
   closeModal('modalHistory');
@@ -412,6 +439,7 @@ function confirmDeleteClient() {
   state.currentClientId = null;
   state.currentActivity = null;
   state.lastTick = null;
+  isWorkpadInitialized = false; // Reset workpad
 
   save();
   updateUI();
