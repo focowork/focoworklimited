@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK – app.js (V2.3 - MULTIIDIOMA)
+ * FOCOWORK – app.js (V2.3 - MULTIIDIOMA COMPLETO)
  * Sin alerts ni prompts, todo con modales personalizados
  * Identificadores internos separados de textos visibles
  *************************************************/
@@ -293,10 +293,10 @@ function confirmNewClient() {
   };
 
   state.currentClientId = id;
-  state.currentActivity = ACTIVITIES.WORK;
+  state.currentActivity = ACTIVITIES.WORK;  // ✅ CORREGIDO
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
-  isWorkpadInitialized = false; // Reset workpad
+  isWorkpadInitialized = false;
 
   save();
   updateUI();
@@ -329,10 +329,10 @@ function changeClient() {
 
 function selectClient(clientId) {
   state.currentClientId = clientId;
-  state.currentActivity = ACTIVITIES.WORK;
+  state.currentActivity = ACTIVITIES.WORK;  // ✅ CORREGIDO
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
-  isWorkpadInitialized = false; // Reset workpad
+  isWorkpadInitialized = false;
 
   save();
   updateUI();
@@ -358,7 +358,7 @@ function confirmCloseClient() {
   state.currentClientId = null;
   state.currentActivity = null;
   state.lastTick = null;
-  isWorkpadInitialized = false; // Reset workpad
+  isWorkpadInitialized = false;
 
   save();
   updateUI();
@@ -411,7 +411,7 @@ function selectHistoryClient(clientId) {
   state.currentActivity = null;
   state.sessionElapsed = 0;
   state.lastTick = null;
-  isWorkpadInitialized = false; // Reset workpad
+  isWorkpadInitialized = false;
 
   updateUI();
   closeModal('modalHistory');
@@ -464,7 +464,7 @@ function confirmDeleteClient() {
   state.currentClientId = null;
   state.currentActivity = null;
   state.lastTick = null;
-  isWorkpadInitialized = false; // Reset workpad
+  isWorkpadInitialized = false;
 
   save();
   updateUI();
@@ -581,7 +581,7 @@ function showFocus() {
     return;
   }
 
-  const trabajo = state.focus[ACTIVITIES.WORK] || 0;
+  const trabajo = state.focus[ACTIVITIES.WORK] || 0;  // ✅ CORREGIDO
   const pct = Math.round((trabajo / total) * 100);
 
   // Llenar modal
