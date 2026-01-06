@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FocoWork</title>
 
-  <!-- PWA / Mobile -->
   <meta name="theme-color" content="#0b0b0b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,110 +15,66 @@
 <body>
   <div class="app">
 
-    <!-- ================= HEADER ================= -->
+    <!-- HEADER -->
     <header class="header">
-      <div id="clientName" class="client-name">Sin cliente activo</div>
-      <div id="activityName" class="activity-name">—</div>
-      <div id="timer" class="timer">00:00:00</div>
-      <div id="clientTotal" class="client-total"></div>
+      <div id="clientName">Sin cliente activo</div>
+      <div id="activityName">—</div>
+      <div id="timer">00:00:00</div>
+      <div id="clientTotal"></div>
     </header>
 
-    <!-- ================= ACTIVIDADES ================= -->
+    <!-- ACTIVIDADES -->
     <section class="panel">
       <div class="grid activities">
-        <button class="activity" data-activity="trabajo">🟦 Trabajo</button>
-        <button class="activity" data-activity="telefono">📞 Teléfono</button>
-        <button class="activity" data-activity="cliente">👥 Cliente</button>
-        <button class="activity" data-activity="visitando">📘 Visitando</button>
-        <button class="activity full-width" data-activity="otros">⚙️ Otros</button>
+        <button class="activity" data-activity="trabajo">Trabajo</button>
+        <button class="activity" data-activity="telefono">Teléfono</button>
+        <button class="activity" data-activity="cliente">Cliente</button>
+        <button class="activity" data-activity="visitando">Visitando</button>
+        <button class="activity full-width" data-activity="otros">Otros</button>
       </div>
     </section>
 
-    <!-- ================= CLIENTE / FOTOS ================= -->
+    <!-- FOTOS -->
     <section class="panel">
-      <button id="cameraBtn" class="primary">
-        📷 Añadir foto al cliente
-      </button>
-
-      <div id="photoGallery" class="photo-gallery"></div>
+      <button id="cameraBtn">📷 Añadir foto</button>
+      <div id="photoGallery"></div>
     </section>
 
-    <!-- ================= CLIENTES ================= -->
+    <!-- CLIENTES -->
     <section class="panel">
       <div class="grid actions">
         <button id="newClient">➕ Nuevo</button>
         <button id="changeClient">🔄 Cambiar</button>
         <button id="historyBtn">📂 Histórico</button>
-        <button id="closeClient" class="danger">✅ Cerrar</button>
-        <button
-          id="deleteClientBtn"
-          class="danger"
-          style="display:none;"
-        >
-          🗑️ Borrar este cliente
-        </button>
+        <button id="closeClient">✅ Cerrar</button>
+        <button id="deleteClientBtn" style="display:none;">🗑️ Borrar cliente</button>
       </div>
     </section>
 
-    <!-- ================= FOOTER ================= -->
+    <!-- FOOTER -->
     <footer class="footer">
       <button id="focusBtn">🎯 Enfoque</button>
       <button id="todayBtn">📄 CSV</button>
     </footer>
 
-    <!-- ================= VERSIÓN / LICENCIA ================= -->
-    <div id="versionBox" class="version-box">
-      <div class="lock">
-        🔒 <strong>Versión de prueba</strong><br />
-        Máximo 2 clientes activos
-      </div>
-
-      <button id="activateFull" class="primary">
-        Activar versión completa
-      </button>
-
-      <input
-        id="activationCode"
-        type="text"
-        placeholder="Introduce código de activación"
-      />
-
-      <button id="applyCode">
-        Activar código
-      </button>
+    <!-- LICENCIA -->
+    <div id="versionBox">
+      <button id="activateFull">Activar versión completa</button>
+      <input id="activationCode" placeholder="Código de activación" />
+      <button id="applyCode">Activar código</button>
     </div>
-
   </div>
 
-  <!-- ================= SCRIPT ================= -->
+  <!-- ===== ALERT PERSONALIZADO (CORREGIDO) ===== -->
+  <div id="alertOverlay" class="hidden">
+    <div class="alertBox">
+      <div class="alertIcon" id="alertIcon">ℹ️</div>
+      <h3 id="alertTitle"></h3>
+      <p id="alertText"></p>
+      <button id="alertOk" type="button">Aceptar</button>
+    </div>
+  </div>
+
   <script src="app.js"></script>
-  <!-- MODAL ENFOQUE -->
-<div id="modalEnfoque" class="modal-overlay hidden">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-icon">🎯</span>
-      <div>
-        <h2 class="modal-title">Enfoque diario</h2>
-        <p class="modal-subtitle" id="modalUserName"></p>
-      </div>
-    </div>
-
-    <div class="modal-body">
-      <div class="activity-list" id="modalActivityList"></div>
-      
-      <div class="total-stats">
-        <div class="total-time">
-          Total trabajado: <strong id="modalTotalTime"></strong>
-        </div>
-      </div>
-
-      <div id="modalFocusState" class="focus-state"></div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn-close" onclick="closeEnfoqueModal()">Aceptar</button>
-    </div>
-  </div>
-        </div>
 </body>
-</html>
+          </html>
