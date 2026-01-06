@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK — app.js (V2.0 - UI MODERNA)
+ * FOCOWORK – app.js (V2.1 - CON WORKPAD)
  * Sin alerts ni prompts, todo con modales personalizados
  *************************************************/
 
@@ -148,6 +148,31 @@ function setActivity(activity) {
   updateUI();
 }
 
+/* ================= WORKPAD (NOTAS) ================= */
+
+function updateWorkpad() {
+  const workpadArea = $('clientWorkpad');
+  const client = state.clients[state.currentClientId];
+  
+  if (!workpadArea || !client) {
+    if (workpadArea) workpadArea.style.display = 'none';
+    return;
+  }
+
+  workpadArea.style.display = 'block';
+  workpadArea.value = client.notes || '';
+  
+  // Guardado automático con debounce
+  let saveTimeout;
+  workpadArea.oninput = () => {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      client.notes = workpadArea.value;
+      save();
+    }, 500);
+  };
+}
+
 /* ================= UI ================= */
 
 function updateUI() {
@@ -185,6 +210,7 @@ function updateUI() {
 
   $("versionBox").style.display = state.isFull ? "none" : "block";
 
+  updateWorkpad();
   renderPhotoGallery();
 }
 
@@ -214,7 +240,8 @@ function confirmNewClient() {
     active: true,
     total: 0,
     activities: {},
-    photos: []
+    photos: [],
+    notes: ""
   };
 
   state.currentClientId = id;
@@ -314,9 +341,14 @@ function renderHistoryList(clients) {
   clients.forEach(client => {
     const item = document.createElement('div');
     item.className = 'client-item';
+    
+    const notesPreview = client.notes && client.notes.trim() 
+      ? ` • ${client.notes.slice(0, 30)}${client.notes.length > 30 ? '...' : ''}`
+      : '';
+    
     item.innerHTML = `
       <div class="client-name">${client.name}</div>
-      <div class="client-time">Total: ${formatTime(client.total)} • ${client.photos.length} fotos</div>
+      <div class="client-time">Total: ${formatTime(client.total)} • ${client.photos.length} fotos${notesPreview}</div>
     `;
     item.onclick = () => selectHistoryClient(client.id);
     list.appendChild(item);
@@ -345,7 +377,8 @@ if ($('searchHistory')) {
     }
 
     const filtered = closed.filter(c => 
-      c.name.toLowerCase().includes(query)
+      c.name.toLowerCase().includes(query) ||
+      (c.notes && c.notes.toLowerCase().includes(query))
     );
     
     renderHistoryList(filtered);
@@ -541,9 +574,10 @@ function showFocus() {
 /* ================= CSV ================= */
 
 function exportTodayCSV() {
-  let csv = "Usuario,Cliente,Tiempo\n";
+  let csv = "Usuario,Cliente,Tiempo,Notas\n";
   Object.values(state.clients).forEach(c => {
-    csv += `${userName},${c.name},${formatTime(c.total)}\n`;
+    const notes = (c.notes || '').replace(/[\n\r]/g, ' ').replace(/"/g, '""');
+    csv += `${userName},"${c.name}",${formatTime(c.total)},"${notes}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
