@@ -1,5 +1,6 @@
 /*************************************************
- * FOCOWORK — app.js FINAL DEFINITIVO
+ * FOCOWORK — app.js (V2.0 - UI MODERNA)
+ * Sin alerts ni prompts, todo con modales personalizados
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -38,26 +39,39 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/* ================= ALERT PERSONALIZADO ================= */
+/* ================= MODALES ================= */
 
-function showAlert(title, message, icon = "ℹ️") {
-  $("alertTitle").textContent = title;
-  $("alertText").textContent = message;
-  $("alertIcon").textContent = icon;
-  $("alertOverlay").classList.remove("hidden");
+function openModal(id) {
+  const modal = $(id);
+  if (modal) modal.classList.remove('hidden');
 }
 
-$("alertOk").onclick = () => {
-  $("alertOverlay").classList.add("hidden");
-};
+function closeModal(id) {
+  const modal = $(id);
+  if (modal) modal.classList.add('hidden');
+}
+
+function showAlert(title, message, icon = 'ℹ️') {
+  $('alertTitle').textContent = title;
+  $('alertText').textContent = message;
+  $('alertIcon').textContent = icon;
+  openModal('modalAlert');
+}
+
+// Cerrar modales al hacer clic fuera
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal(overlay.id);
+      }
+    });
+  });
+});
 
 /* ================= USER ================= */
 
-let userName = localStorage.getItem("focowork_user_name");
-if (!userName) {
-  userName = prompt("Tu nombre (para reportes):");
-  if (userName) localStorage.setItem("focowork_user_name", userName);
-}
+let userName = localStorage.getItem("focowork_user_name") || "Usuario";
 
 /* ================= STATE ================= */
 
@@ -123,7 +137,7 @@ setInterval(tick, 1000);
 function setActivity(activity) {
   const client = state.clients[state.currentClientId];
   if (!client || !client.active) {
-    showAlert("Atención", "Selecciona un cliente activo primero", "⚠️");
+    showAlert('Sin cliente', 'Primero selecciona un cliente activo', '⚠️');
     return;
   }
 
@@ -163,7 +177,12 @@ function updateUI() {
   });
 
   $("cameraBtn").style.display = client && client.active ? "block" : "none";
-  $("deleteClientBtn").style.display = client && !client.active ? "block" : "none";
+
+  const deleteBtn = $("deleteClientBtn");
+  if (deleteBtn) {
+    deleteBtn.style.display = client && !client.active ? "block" : "none";
+  }
+
   $("versionBox").style.display = state.isFull ? "none" : "block";
 
   renderPhotoGallery();
@@ -172,14 +191,21 @@ function updateUI() {
 /* ================= CLIENTES ================= */
 
 function newClient() {
-  const name = prompt("Cliente + descripción del trabajo");
-  if (!name) return;
-
   const activeClients = Object.values(state.clients).filter(c => c.active);
   if (!state.isFull && activeClients.length >= 2) {
-    showAlert("Versión demo", "Máximo 2 clientes activos", "🔒");
+    showAlert('Versión demo', 'Máximo 2 clientes activos.\nActiva la versión completa para clientes ilimitados.', '🔒');
     return;
   }
+
+  $('inputNewClient').value = '';
+  openModal('modalNewClient');
+  
+  setTimeout(() => $('inputNewClient').focus(), 300);
+}
+
+function confirmNewClient() {
+  const name = $('inputNewClient').value.trim();
+  if (!name) return;
 
   const id = uid();
   state.clients[id] = {
@@ -198,37 +224,59 @@ function newClient() {
 
   save();
   updateUI();
+  closeModal('modalNewClient');
 }
 
 function changeClient() {
   const actives = Object.values(state.clients).filter(c => c.active);
   if (!actives.length) {
-    showAlert("Info", "No hay clientes activos");
+    showAlert('Sin clientes', 'No hay clientes activos', '⚠️');
     return;
   }
 
-  const list = actives.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
-  const sel = parseInt(prompt("Clientes activos:\n" + list), 10);
-  if (!sel || !actives[sel - 1]) return;
+  const list = $('activeClientsList');
+  list.innerHTML = '';
 
-  state.currentClientId = actives[sel - 1].id;
+  actives.forEach(client => {
+    const item = document.createElement('div');
+    item.className = 'client-item';
+    item.innerHTML = `
+      <div class="client-name">${client.name}</div>
+      <div class="client-time">Total: ${formatTime(client.total)}</div>
+    `;
+    item.onclick = () => selectClient(client.id);
+    list.appendChild(item);
+  });
+
+  openModal('modalChangeClient');
+}
+
+function selectClient(clientId) {
+  state.currentClientId = clientId;
   state.currentActivity = "trabajo";
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
 
   save();
   updateUI();
+  closeModal('modalChangeClient');
 }
 
 function closeClient() {
   const client = state.clients[state.currentClientId];
   if (!client) return;
 
+  $('closeClientText').textContent = 
+    `Cliente: ${client.name}\nTiempo total: ${formatTime(client.total)}`;
+  
+  openModal('modalCloseClient');
+}
+
+function confirmCloseClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
   client.active = false;
-  showAlert("Cliente cerrado",
-    `${client.name}\nTotal: ${formatTime(client.total)}`,
-    "✅"
-  );
 
   state.currentClientId = null;
   state.currentActivity = null;
@@ -236,6 +284,9 @@ function closeClient() {
 
   save();
   updateUI();
+  closeModal('modalCloseClient');
+  
+  showAlert('Cliente cerrado', `${client.name}\nTiempo total: ${formatTime(client.total)}`, '✅');
 }
 
 /* ================= HISTÓRICO ================= */
@@ -243,30 +294,62 @@ function closeClient() {
 function showHistory() {
   const closed = Object.values(state.clients).filter(c => !c.active);
   if (!closed.length) {
-    showAlert("Histórico", "No hay clientes cerrados");
+    showAlert('Sin histórico', 'No hay clientes cerrados', 'ℹ️');
     return;
   }
 
-  const query = prompt("Buscar cliente (vacío = todos)");
-  const filtered = query
-    ? closed.filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
-    : closed;
+  renderHistoryList(closed);
+  openModal('modalHistory');
+}
 
-  if (!filtered.length) {
-    showAlert("Histórico", "Sin resultados");
+function renderHistoryList(clients) {
+  const list = $('historyClientsList');
+  list.innerHTML = '';
+
+  if (!clients.length) {
+    list.innerHTML = '<p class="modal-text" style="opacity: 0.6; text-align: center;">Sin resultados</p>';
     return;
   }
 
-  const list = filtered.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
-  const sel = parseInt(prompt("Histórico:\n" + list), 10);
-  if (!sel || !filtered[sel - 1]) return;
+  clients.forEach(client => {
+    const item = document.createElement('div');
+    item.className = 'client-item';
+    item.innerHTML = `
+      <div class="client-name">${client.name}</div>
+      <div class="client-time">Total: ${formatTime(client.total)} • ${client.photos.length} fotos</div>
+    `;
+    item.onclick = () => selectHistoryClient(client.id);
+    list.appendChild(item);
+  });
+}
 
-  state.currentClientId = filtered[sel - 1].id;
+function selectHistoryClient(clientId) {
+  state.currentClientId = clientId;
   state.currentActivity = null;
   state.sessionElapsed = 0;
   state.lastTick = null;
 
   updateUI();
+  closeModal('modalHistory');
+}
+
+// Búsqueda en histórico
+if ($('searchHistory')) {
+  $('searchHistory').addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const closed = Object.values(state.clients).filter(c => !c.active);
+    
+    if (!query) {
+      renderHistoryList(closed);
+      return;
+    }
+
+    const filtered = closed.filter(c => 
+      c.name.toLowerCase().includes(query)
+    );
+    
+    renderHistoryList(filtered);
+  });
 }
 
 /* ================= BORRAR CLIENTE ================= */
@@ -275,11 +358,22 @@ function deleteCurrentClient() {
   const client = state.clients[state.currentClientId];
   if (!client || client.active) return;
 
-  const confirmText = prompt(
-    `Eliminar DEFINITIVAMENTE:\n${client.name}\n\nEscribe BORRAR`
-  );
+  $('deleteClientText').textContent = 
+    `Cliente: ${client.name}\nTiempo: ${formatTime(client.total)}\nFotos: ${client.photos.length}\n\nEsta acción no se puede deshacer.`;
+  
+  $('inputDeleteConfirm').value = '';
+  openModal('modalDeleteClient');
+  
+  setTimeout(() => $('inputDeleteConfirm').focus(), 300);
+}
 
-  if (confirmText !== "BORRAR") return;
+function confirmDeleteClient() {
+  const confirm = $('inputDeleteConfirm').value.trim().toUpperCase();
+  
+  if (confirm !== 'BORRAR') {
+    showAlert('Error', 'Debes escribir BORRAR para confirmar', '⚠️');
+    return;
+  }
 
   delete state.clients[state.currentClientId];
   state.currentClientId = null;
@@ -288,10 +382,14 @@ function deleteCurrentClient() {
 
   save();
   updateUI();
-  showAlert("Eliminado", "Cliente eliminado correctamente", "🗑️");
+  closeModal('modalDeleteClient');
+  
+  showAlert('Cliente eliminado', 'El cliente ha sido eliminado definitivamente', '🗑️');
 }
 
 /* ================= FOTOS ================= */
+
+let photoToDelete = null;
 
 function addPhotoToClient() {
   const client = state.clients[state.currentClientId];
@@ -342,6 +440,7 @@ function addPhotoToClient() {
 
 function renderPhotoGallery() {
   const gallery = $("photoGallery");
+  if (!gallery) return;
   gallery.innerHTML = "";
 
   const client = state.clients[state.currentClientId];
@@ -356,20 +455,35 @@ function renderPhotoGallery() {
 
       img.onclick = () => {
         const w = window.open();
-        if (w) w.document.write(`<img src="${p.data}" style="width:100%">`);
+        if (w) {
+          w.document.write(
+            `<img src="${p.data}" style="width:100%;background:#000">`
+          );
+        }
       };
 
       img.oncontextmenu = (e) => {
         e.preventDefault();
-        if (confirm("¿Eliminar esta foto?")) {
-          client.photos = client.photos.filter(f => f.id !== p.id);
-          save();
-          renderPhotoGallery();
-        }
+        photoToDelete = p.id;
+        openModal('modalDeletePhoto');
       };
 
       gallery.appendChild(img);
     });
+}
+
+function confirmDeletePhoto() {
+  if (!photoToDelete) return;
+
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  client.photos = client.photos.filter(f => f.id !== photoToDelete);
+  photoToDelete = null;
+  
+  save();
+  renderPhotoGallery();
+  closeModal('modalDeletePhoto');
 }
 
 /* ================= ENFOQUE ================= */
@@ -377,18 +491,51 @@ function renderPhotoGallery() {
 function showFocus() {
   const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
   if (!total) {
-    showAlert("Enfoque", "Aún no hay datos");
+    showAlert('Sin datos', 'Aún no hay datos de enfoque hoy', 'ℹ️');
     return;
   }
 
-  let msg = "";
+  const trabajo = state.focus.trabajo || 0;
+  const pct = Math.round((trabajo / total) * 100);
+
+  // Llenar modal
+  $('modalUserName').textContent = userName;
+  $('modalTotalTime').textContent = formatTime(total);
+  
+  // Llenar actividades
+  const list = $('modalActivityList');
+  list.innerHTML = '';
+  
   for (const act in state.focus) {
-    const t = state.focus[act];
-    const pct = Math.round((t / total) * 100);
-    msg += `${act}: ${formatTime(t)} (${pct}%)\n`;
+    const seconds = state.focus[act];
+    const actPct = Math.round((seconds / total) * 100);
+    
+    const item = document.createElement('div');
+    item.className = 'activity-item';
+    item.innerHTML = `
+      <span class="activity-name">${act}</span>
+      <div class="activity-stats">
+        <span class="activity-time">${formatTime(seconds)}</span>
+        <span class="activity-percent">${actPct}%</span>
+      </div>
+    `;
+    list.appendChild(item);
   }
 
-  showAlert("Enfoque diario", msg, "🎯");
+  // Estado de enfoque
+  const focusState = $('modalFocusState');
+  if (pct >= 64) {
+    focusState.className = 'focus-state enfocado';
+    focusState.innerHTML = '🟢 Enfocado';
+  } else if (pct >= 40) {
+    focusState.className = 'focus-state atencion';
+    focusState.innerHTML = '🟡 Atención';
+  } else {
+    focusState.className = 'focus-state disperso';
+    focusState.innerHTML = '🔴 Disperso';
+  }
+
+  openModal('modalEnfoque');
 }
 
 /* ================= CSV ================= */
@@ -404,6 +551,8 @@ function exportTodayCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = `focowork_${todayKey()}.csv`;
   a.click();
+  
+  showAlert('CSV exportado', 'El archivo se ha descargado correctamente', '📄');
 }
 
 /* ================= LICENCIA ================= */
@@ -417,10 +566,11 @@ function activateWhatsApp() {
 
 function applyCode() {
   const input = $("activationCode");
-  const code = input.value.trim().toUpperCase();
+  if (!input) return;
 
+  const code = input.value.trim().toUpperCase();
   if (!VALID_CODES.includes(code)) {
-    showAlert("Código inválido", "El código introducido no es válido", "❌");
+    showAlert('Código inválido', 'El código introducido no es válido', '❌');
     return;
   }
 
@@ -431,7 +581,9 @@ function applyCode() {
 
   save();
   updateUI();
-  showAlert("Activado", "Versión completa activada", "🔓");
+  
+  input.value = '';
+  showAlert('¡Activado!', 'Versión completa activada correctamente.\n¡Disfruta de FOCOwork sin límites!', '✅');
 }
 
 /* ================= EVENTOS ================= */
@@ -450,6 +602,15 @@ $("focusBtn").onclick = showFocus;
 $("todayBtn").onclick = exportTodayCSV;
 $("activateFull").onclick = activateWhatsApp;
 $("applyCode").onclick = applyCode;
+
+// Enter en inputs de modales
+$('inputNewClient').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') confirmNewClient();
+});
+
+$('inputDeleteConfirm').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') confirmDeleteClient();
+});
 
 /* ================= INIT ================= */
 
