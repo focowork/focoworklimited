@@ -1,1 +1,261 @@
-hhhhhhhh
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FocoWork</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b0b0b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div id="clientName" class="client-name">Sin cliente activo</div>
+      <div id="activityName" class="activity-name">—</div>
+      <div id="timer" class="timer">00:00:00</div>
+      <div id="clientTotal" class="client-total"></div>
+    </header>
+
+    <!-- ACTIVIDADES -->
+    <section class="panel">
+      <div class="grid activities">
+        <button class="activity" data-activity="work">🟦 Trabajo</button>
+        <button class="activity" data-activity="phone">📞 Teléfono</button>
+        <button class="activity" data-activity="client">👥 Cliente</button>
+        <button class="activity" data-activity="visit">📘 Visitando</button>
+        <button class="activity full-width" data-activity="other">⚙️ Otros</button>
+      </div>
+    </section>
+
+    <!-- INFO CLIENTE (CÁMARA) -->
+    <section class="panel" id="clientInfoPanel">
+      <!-- WORKPAD (Bloc de notas) -->
+<div class="workpad-container">
+  <div class="workpad-header">
+    <span class="workpad-icon">📝</span>
+    <span class="workpad-title">Notas del cliente</span>
+  </div>
+  <textarea 
+    id="clientWorkpad" 
+    class="workpad-area" 
+    placeholder="Apuntes, tareas pendientes, detalles del proyecto..."
+    style="display: none;"
+  ></textarea>
+</div>
+      <button id="cameraBtn" class="primary">
+        📷 Añadir foto al cliente
+      </button>
+
+      <!-- Galería (se llenará por JS) -->
+      <div id="photoGallery" class="photo-gallery">
+        <!-- miniaturas aquí -->
+      </div>
+    </section>
+
+    <!-- CLIENTES -->
+    <section class="panel">
+      <div class="grid actions">
+        <button id="newClient">➕ Nuevo</button>
+        <button id="changeClient">🔄 Cambiar</button>
+        <button id="historyBtn">📂 Histórico</button>
+        <button id="closeClient" class="danger">✅ Cerrar</button>
+      </div>
+    </section>
+
+    <!-- BORRAR CLIENTE (solo visible para clientes cerrados) -->
+    <section class="panel">
+      <button id="deleteClientBtn" class="danger" style="display: none;">
+        🗑️ Borrar este cliente
+      </button>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <button id="focusBtn">🎯 Enfoque</button>
+      <button id="todayBtn">📄 CSV</button>
+    </footer>
+
+    <!-- VERSIÓN -->
+    <div id="versionBox" class="version-box">
+      <div class="lock">
+        🔒 <strong>Versión de prueba</strong><br />
+        Máximo 2 clientes activos simultáneamente
+      </div>
+
+      <button id="activateFull" class="primary">
+        Activar versión completa
+      </button>
+
+      <input
+        id="activationCode"
+        type="text"
+        placeholder="Introduce código de activación"
+      />
+
+      <button id="applyCode">
+        Activar código
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ===============================================
+       MODALES
+       =============================================== -->
+
+  <!-- MODAL: Nuevo Cliente -->
+  <div id="modalNewClient" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">➕</span>
+        <h2 class="modal-title">Nuevo cliente</h2>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">Cliente + descripción del trabajo</label>
+        <input type="text" id="inputNewClient" class="modal-input" placeholder="Ej: Juan - Diseño web corporativo">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalNewClient')">Cancelar</button>
+        <button class="btn-primary" onclick="confirmNewClient()">Crear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Cambiar Cliente -->
+  <div id="modalChangeClient" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">🔄</span>
+        <h2 class="modal-title">Cambiar cliente</h2>
+      </div>
+      <div class="modal-body">
+        <div id="activeClientsList" class="clients-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalChangeClient')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Histórico -->
+  <div id="modalHistory" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">📂</span>
+        <h2 class="modal-title">Histórico de clientes</h2>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="searchHistory" class="modal-input" placeholder="🔍 Buscar cliente o trabajo...">
+        <div id="historyClientsList" class="clients-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalHistory')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirmar Cerrar Cliente -->
+  <div id="modalCloseClient" class="modal-overlay hidden">
+    <div class="modal modal-confirm">
+      <div class="modal-header">
+        <span class="modal-icon">✅</span>
+        <h2 class="modal-title">Cerrar cliente</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text" id="closeClientText"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalCloseClient')">Cancelar</button>
+        <button class="btn-success" onclick="confirmCloseClient()">Cerrar cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirmar Borrar Cliente -->
+  <div id="modalDeleteClient" class="modal-overlay hidden">
+    <div class="modal modal-confirm">
+      <div class="modal-header">
+        <span class="modal-icon">🗑️</span>
+        <h2 class="modal-title">Eliminar cliente</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text" id="deleteClientText"></p>
+        <label class="modal-label">Escribe BORRAR para confirmar</label>
+        <input type="text" id="inputDeleteConfirm" class="modal-input" placeholder="BORRAR">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalDeleteClient')">Cancelar</button>
+        <button class="btn-danger" onclick="confirmDeleteClient()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Enfoque Diario -->
+  <div id="modalEnfoque" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">🎯</span>
+        <div>
+          <h2 class="modal-title">Enfoque diario</h2>
+          <p class="modal-subtitle" id="modalUserName"></p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="activity-list" id="modalActivityList"></div>
+        <div class="total-stats">
+          <div class="total-time">
+            Total trabajado: <strong id="modalTotalTime"></strong>
+          </div>
+        </div>
+        <div id="modalFocusState" class="focus-state"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" onclick="closeModal('modalEnfoque')">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Eliminar Foto -->
+  <div id="modalDeletePhoto" class="modal-overlay hidden">
+    <div class="modal modal-confirm">
+      <div class="modal-header">
+        <span class="modal-icon">🗑️</span>
+        <h2 class="modal-title">Eliminar foto</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text">¿Eliminar esta foto del cliente?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalDeletePhoto')">Cancelar</button>
+        <button class="btn-danger" onclick="confirmDeletePhoto()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Avisos (reemplaza alert genérico) -->
+  <div id="modalAlert" class="modal-overlay hidden">
+    <div class="modal modal-alert">
+      <div class="modal-header">
+        <span class="modal-icon" id="alertIcon">ℹ️</span>
+        <h2 class="modal-title" id="alertTitle">Aviso</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text" id="alertText"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" onclick="closeModal('modalAlert')">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+        </html>
