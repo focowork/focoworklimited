@@ -1,6 +1,7 @@
 /*************************************************
- * FOCOWORK – app.js (V2.2 - WORKPAD CORREGIDO)
+ * FOCOWORK – app.js (V2.3 - MULTIIDIOMA)
  * Sin alerts ni prompts, todo con modales personalizados
+ * Identificadores internos separados de textos visibles
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -19,6 +20,27 @@ const VALID_CODES = [
   "FW-RAGX-PRAM","FW-RFA0-IH08","FW-9QGF-ZTTN","FW-ZK0F-5U47","FW-GSLS-ME29",
   "FW-0ODT-JU2R","FW-T299-WCQS","FW-NOEX-H6QO","FW-NPV1-NGO2","FW-2QQU-X1R1"
 ];
+
+/* ================= ACTIVITIES (INTERNAL KEYS) ================= */
+
+const ACTIVITIES = {
+  WORK: "work",
+  PHONE: "phone",
+  CLIENT: "client",
+  VISIT: "visit",
+  OTHER: "other"
+};
+
+function activityLabel(act) {
+  switch (act) {
+    case ACTIVITIES.WORK: return "Trabajo";
+    case ACTIVITIES.PHONE: return "Teléfono";
+    case ACTIVITIES.CLIENT: return "Cliente";
+    case ACTIVITIES.VISIT: return "Visitando";
+    case ACTIVITIES.OTHER: return "Otros";
+    default: return act;
+  }
+}
 
 /* ================= HELPERS ================= */
 
@@ -207,7 +229,10 @@ function updateUI() {
     ? `Cliente: ${client.name}${client.active ? "" : " (cerrado)"}`
     : "Sin cliente activo";
 
-  $("activityName").textContent = state.currentActivity || "—";
+  $("activityName").textContent = state.currentActivity 
+    ? activityLabel(state.currentActivity) 
+    : "—";
+  
   $("timer").textContent =
     client && client.active ? formatTime(state.sessionElapsed) : "00:00:00";
 
@@ -268,7 +293,7 @@ function confirmNewClient() {
   };
 
   state.currentClientId = id;
-  state.currentActivity = "trabajo";
+  state.currentActivity = ACTIVITIES.WORK;
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
   isWorkpadInitialized = false; // Reset workpad
@@ -304,7 +329,7 @@ function changeClient() {
 
 function selectClient(clientId) {
   state.currentClientId = clientId;
-  state.currentActivity = "trabajo";
+  state.currentActivity = ACTIVITIES.WORK;
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
   isWorkpadInitialized = false; // Reset workpad
@@ -556,7 +581,7 @@ function showFocus() {
     return;
   }
 
-  const trabajo = state.focus.trabajo || 0;
+  const trabajo = state.focus[ACTIVITIES.WORK] || 0;
   const pct = Math.round((trabajo / total) * 100);
 
   // Llenar modal
@@ -574,7 +599,7 @@ function showFocus() {
     const item = document.createElement('div');
     item.className = 'activity-item';
     item.innerHTML = `
-      <span class="activity-name">${act}</span>
+      <span class="activity-name">${activityLabel(act)}</span>
       <div class="activity-stats">
         <span class="activity-time">${formatTime(seconds)}</span>
         <span class="activity-percent">${actPct}%</span>
