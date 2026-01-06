@@ -270,7 +270,114 @@ button:hover,
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
+/* ===============================
+   WORKPAD (BLOC DE NOTAS)
+   =============================== */
 
+.workpad-container {
+  margin-bottom: 18px;
+}
+
+.workpad-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.workpad-icon {
+  font-size: 18px;
+  opacity: 0.9;
+}
+
+.workpad-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #cbd5e1;
+  opacity: 0.9;
+}
+
+.workpad-area {
+  width: 100%;
+  min-height: 120px;
+  max-height: 200px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(10px);
+  color: #e2e8f0;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  transition: all 0.3s ease;
+}
+
+.workpad-area:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.workpad-area::placeholder {
+  color: rgba(248, 250, 252, 0.3);
+  font-style: italic;
+}
+
+.workpad-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.workpad-area::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 3px;
+}
+
+.workpad-area::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+.workpad-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+```
+
+---
+
+## ⚙️ **NO NECESITAS MODIFICAR:**
+
+❌ **manifest.json** - ya está bien  
+❌ **sw-v2.js** - ya está bien  
+❌ **storage.js** - no se usa activamente  
+❌ **timeEngine.js** - no se usa activamente
+
+---
+
+## 🎯 **Resultado final:**
+
+Cuando abras un cliente activo verás:
+```
+[Cliente: Juan - Diseño web]
+[Actividad: trabajo]
+[Timer: 01:23:45]
+
+[Actividades: Trabajo | Teléfono | Cliente...]
+
+📝 Notas del cliente
+┌──────────────────────────────────┐
+│ Apuntes, tareas pendientes...    │
+│                                  │
+│ (textarea que se guarda solo)    │
+└──────────────────────────────────┘
+
+📷 Añadir foto al cliente
+
+[Galería de fotos]
 /* ===============================
    GALERÍA DE FOTOS
    =============================== */
