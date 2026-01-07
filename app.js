@@ -64,7 +64,7 @@ function todayKey() {
 
 function isWithinFocusSchedule(date = new Date()) {
   if (!state.focusSchedule || !state.focusSchedule.enabled) {
-    return true; // comportamiento actual
+    return true;
   }
 
   const [sh, sm] = state.focusSchedule.start.split(":").map(Number);
@@ -95,17 +95,6 @@ function showAlert(title, message, icon = 'ℹ️') {
   $('alertIcon').textContent = icon;
   openModal('modalAlert');
 }
-
-// Cerrar modales al hacer clic fuera
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        closeModal(overlay.id);
-      }
-    });
-  });
-});
 
 /* ================= USER ================= */
 
@@ -166,7 +155,6 @@ function tick() {
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
-  // ✅ NUEVO: Solo suma al enfoque si está dentro del horario
   if (isWithinFocusSchedule()) {
     state.focus[state.currentActivity] =
       (state.focus[state.currentActivity] || 0) + elapsed;
@@ -194,7 +182,7 @@ function setActivity(activity) {
   updateUI();
 }
 
-/* ================= WORKPAD (NOTAS) - CORREGIDO ================= */
+/* ================= WORKPAD (NOTAS) ================= */
 
 let workpadTimeout = null;
 let isWorkpadInitialized = false;
@@ -213,13 +201,11 @@ function updateWorkpad() {
 
   workpadArea.style.display = 'block';
   
-  // Solo actualizar el valor si es necesario (evita resetear cursor)
   const savedNote = client.notes || '';
   if (workpadArea.value !== savedNote && !isWorkpadInitialized) {
     workpadArea.value = savedNote;
   }
   
-  // Configurar listener solo una vez
   if (!isWorkpadInitialized) {
     workpadArea.oninput = handleWorkpadInput;
     isWorkpadInitialized = true;
@@ -230,13 +216,9 @@ function handleWorkpadInput(e) {
   const client = state.clients[state.currentClientId];
   if (!client) return;
 
-  // Guardar en memoria inmediatamente (sin tocar el DOM)
   client.notes = e.target.value;
-
-  // Limpiar timeout anterior
   clearTimeout(workpadTimeout);
 
-  // Guardar a localStorage después de 1 segundo sin escribir
   workpadTimeout = setTimeout(() => {
     save();
   }, 1000);
@@ -441,26 +423,6 @@ function selectHistoryClient(clientId) {
   closeModal('modalHistory');
 }
 
-// Búsqueda en histórico
-if ($('searchHistory')) {
-  $('searchHistory').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const closed = Object.values(state.clients).filter(c => !c.active);
-    
-    if (!query) {
-      renderHistoryList(closed);
-      return;
-    }
-
-    const filtered = closed.filter(c => 
-      c.name.toLowerCase().includes(query) ||
-      (c.notes && c.notes.toLowerCase().includes(query))
-    );
-    
-    renderHistoryList(filtered);
-  });
-}
-
 /* ================= BORRAR CLIENTE ================= */
 
 function deleteCurrentClient() {
@@ -608,11 +570,9 @@ function showFocus() {
   const trabajo = state.focus[ACTIVITIES.WORK] || 0;
   const pct = Math.round((trabajo / total) * 100);
 
-  // Llenar modal
   $('modalUserName').textContent = userName;
   $('modalTotalTime').textContent = formatTime(total);
   
-  // Llenar actividades
   const list = $('modalActivityList');
   list.innerHTML = '';
   
@@ -632,7 +592,6 @@ function showFocus() {
     list.appendChild(item);
   }
 
-  // Estado de enfoque
   const focusState = $('modalFocusState');
   if (pct >= 64) {
     focusState.className = 'focus-state enfocado';
@@ -674,23 +633,18 @@ function openScheduleModal() {
   const startInput = $('scheduleStart');
   const endInput = $('scheduleEnd');
 
-  // Cargar valores actuales
   checkbox.checked = state.focusSchedule.enabled;
   startInput.value = state.focusSchedule.start;
   endInput.value = state.focusSchedule.end;
 
-  // Mostrar/ocultar configuración
   config.style.display = checkbox.checked ? 'block' : 'none';
 
-  // Actualizar preview
   updateSchedulePreview();
 
-  // Event listener para el checkbox
   checkbox.onchange = () => {
     config.style.display = checkbox.checked ? 'block' : 'none';
   };
 
-  // Event listeners para actualizar preview en tiempo real
   startInput.oninput = updateSchedulePreview;
   endInput.oninput = updateSchedulePreview;
 
@@ -703,7 +657,6 @@ function updateSchedulePreview() {
 
   $('schedulePreview').textContent = `${start} - ${end}`;
 
-  // Calcular duración
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
 
@@ -728,7 +681,6 @@ function saveScheduleConfig() {
   const start = $('scheduleStart').value;
   const end = $('scheduleEnd').value;
 
-  // Validar que fin sea mayor que inicio
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
 
@@ -737,7 +689,57 @@ function saveScheduleConfig() {
     return;
   }
 
-  // Guardar configuración
   state.focusSchedule.enabled = enabled;
   state.focusSchedule.start = start;
-  state.focusSchedule.end = end
+  state.focusSchedule.end = end;
+
+  save();
+  closeModal('modalSchedule');
+  showAlert('Guardado', 'Configuración de horario guardada correctamente', '✅');
+}
+
+/* ================= ACTIVACIÓN ================= */
+
+function activateFull() {
+  const msg = `Hola, quiero activar FocoWork completo`;
+  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`);
+}
+
+function applyCode() {
+  const code = $("activationCode").value.trim().toUpperCase();
+  
+  if (!code) {
+    showAlert('Error', 'Introduce un código de activación', '⚠️');
+    return;
+  }
+
+  if (VALID_CODES.includes(code)) {
+    state.isFull = true;
+    state.license = code;
+    localStorage.setItem("focowork_full", "true");
+    localStorage.setItem("focowork_license", code);
+    save();
+    updateUI();
+    showAlert('¡Activado!', 'FocoWork completo activado correctamente.\nDisfruta de clientes ilimitados.', '🎉');
+    $("activationCode").value = '';
+  } else {
+    showAlert('Código inválido', 'El código introducido no es válido', '❌');
+  }
+}
+
+/* ================= EVENT LISTENERS ================= */
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Cerrar modales al hacer clic fuera
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal(overlay.id);
+      }
+    });
+  });
+
+  // Búsqueda en histórico
+  if ($('searchHistory')) {
+    $('searchHistory').addEventListener('input', (e) => {
+      const query = e.target.val
