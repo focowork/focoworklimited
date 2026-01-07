@@ -1,5 +1,5 @@
 /*************************************************
- * FOCOWORK – app.js (V2.4 - HORARIO CONFIGURABLE)
+ * FOCOWORK – app.js (V2.5 - BUGS CRÍTICOS CORREGIDOS)
  * Sin alerts ni prompts, todo con modales personalizados
  * Identificadores internos separados de textos visibles
  * Enfoque con horario configurable
@@ -264,8 +264,23 @@ function updateUI() {
 
   $("versionBox").style.display = state.isFull ? "none" : "block";
 
+  // Mostrar aviso si está fuera de horario de enfoque
+  updateFocusScheduleStatus();
+
   updateWorkpad();
   renderPhotoGallery();
+}
+
+function updateFocusScheduleStatus() {
+  const statusEl = $("focusScheduleStatus");
+  if (!statusEl) return;
+
+  if (state.focusSchedule.enabled && !isWithinFocusSchedule()) {
+    statusEl.textContent = "⏳ Fuera de horario de enfoque";
+    statusEl.style.display = "block";
+  } else {
+    statusEl.style.display = "none";
+  }
 }
 
 /* ================= CLIENTES ================= */
@@ -726,11 +741,27 @@ function applyCode() {
     showAlert('Código inválido', 'El código introducido no es válido', '❌');
   }
 }
-
 /* ================= EVENT LISTENERS ================= */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Cerrar modales al hacer clic fuera
+
+  // BOTONS PRINCIPALS
+  $('newClient').onclick = newClient;
+  $('changeClient').onclick = changeClient;
+  $('historyBtn').onclick = showHistory;
+  $('closeClient').onclick = closeClient;
+  $('focusBtn').onclick = showFocus;
+  $('scheduleBtn').onclick = openScheduleModal;
+  $('todayBtn').onclick = exportTodayCSV;
+  $('cameraBtn').onclick = addPhotoToClient;
+  $('deleteClientBtn').onclick = deleteCurrentClient;
+
+  // BOTONS D'ACTIVITAT
+  document.querySelectorAll('.activity').forEach(btn => {
+    btn.onclick = () => setActivity(btn.dataset.activity);
+  });
+
+  // CLIC FORA PER TANCAR MODALS
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
@@ -739,7 +770,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Búsqueda en histórico
+  // BUSCADOR D'HISTÒRIC
   if ($('searchHistory')) {
     $('searchHistory').addEventListener('input', (e) => {
-      const query = e.target.val
+      const query = e.target.value.toLowerCase();
+      const closed = Object.values(state.clients).filter(c => !c.active);
+      const filtered = closed.filter(c =>
+        c.name.toLowerCase().includes(query) ||
+        (c.notes || '').toLowerCase().includes(query)
+      );
+      renderHistoryList(filtered);
+    });
+  }
+
+  // INICIALITZACIÓ UI
+  updateUI();
+});
