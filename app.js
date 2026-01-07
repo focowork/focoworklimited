@@ -1,7 +1,8 @@
 /*************************************************
- * FOCOWORK – app.js (V2.3 - MULTIIDIOMA COMPLETO)
+ * FOCOWORK – app.js (V2.4 - HORARIO CONFIGURABLE)
  * Sin alerts ni prompts, todo con modales personalizados
  * Identificadores internos separados de textos visibles
+ * Enfoque con horario configurable
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -61,6 +62,21 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isWithinFocusSchedule(date = new Date()) {
+  if (!state.focusSchedule || !state.focusSchedule.enabled) {
+    return true; // comportamiento actual
+  }
+
+  const [sh, sm] = state.focusSchedule.start.split(":").map(Number);
+  const [eh, em] = state.focusSchedule.end.split(":").map(Number);
+
+  const minutesNow = date.getHours() * 60 + date.getMinutes();
+  const minutesStart = sh * 60 + sm;
+  const minutesEnd = eh * 60 + em;
+
+  return minutesNow >= minutesStart && minutesNow <= minutesEnd;
+}
+
 /* ================= MODALES ================= */
 
 function openModal(id) {
@@ -106,7 +122,12 @@ let state = JSON.parse(localStorage.getItem("focowork_state")) || {
   lastTick: null,
   sessionElapsed: 0,
   clients: {},
-  focus: {}
+  focus: {},
+  focusSchedule: {
+    enabled: false,
+    start: "09:00",
+    end: "17:00"
+  }
 };
 
 function save() {
@@ -145,8 +166,11 @@ function tick() {
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
-  state.focus[state.currentActivity] =
-    (state.focus[state.currentActivity] || 0) + elapsed;
+  // ✅ NUEVO: Solo suma al enfoque si está dentro del horario
+  if (isWithinFocusSchedule()) {
+    state.focus[state.currentActivity] =
+      (state.focus[state.currentActivity] || 0) + elapsed;
+  }
 
   save();
   updateUI();
@@ -293,7 +317,7 @@ function confirmNewClient() {
   };
 
   state.currentClientId = id;
-  state.currentActivity = ACTIVITIES.WORK;  // ✅ CORREGIDO
+  state.currentActivity = ACTIVITIES.WORK;
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
   isWorkpadInitialized = false;
@@ -329,7 +353,7 @@ function changeClient() {
 
 function selectClient(clientId) {
   state.currentClientId = clientId;
-  state.currentActivity = ACTIVITIES.WORK;  // ✅ CORREGIDO
+  state.currentActivity = ACTIVITIES.WORK;
   state.sessionElapsed = 0;
   state.lastTick = Date.now();
   isWorkpadInitialized = false;
@@ -581,7 +605,7 @@ function showFocus() {
     return;
   }
 
-  const trabajo = state.focus[ACTIVITIES.WORK] || 0;  // ✅ CORREGIDO
+  const trabajo = state.focus[ACTIVITIES.WORK] || 0;
   const pct = Math.round((trabajo / total) * 100);
 
   // Llenar modal
@@ -642,63 +666,78 @@ function exportTodayCSV() {
   showAlert('CSV exportado', 'El archivo se ha descargado correctamente', '📄');
 }
 
-/* ================= LICENCIA ================= */
+/* ================= CONFIGURACIÓN DE HORARIO ================= */
 
-function activateWhatsApp() {
-  const msg = encodeURIComponent(
-    "Hola, quiero activar FocoWork. ¿Cómo procedemos?"
-  );
-  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${msg}`, "_blank");
+function openScheduleModal() {
+  const checkbox = $('scheduleEnabled');
+  const config = $('scheduleConfig');
+  const startInput = $('scheduleStart');
+  const endInput = $('scheduleEnd');
+
+  // Cargar valores actuales
+  checkbox.checked = state.focusSchedule.enabled;
+  startInput.value = state.focusSchedule.start;
+  endInput.value = state.focusSchedule.end;
+
+  // Mostrar/ocultar configuración
+  config.style.display = checkbox.checked ? 'block' : 'none';
+
+  // Actualizar preview
+  updateSchedulePreview();
+
+  // Event listener para el checkbox
+  checkbox.onchange = () => {
+    config.style.display = checkbox.checked ? 'block' : 'none';
+  };
+
+  // Event listeners para actualizar preview en tiempo real
+  startInput.oninput = updateSchedulePreview;
+  endInput.oninput = updateSchedulePreview;
+
+  openModal('modalSchedule');
 }
 
-function applyCode() {
-  const input = $("activationCode");
-  if (!input) return;
+function updateSchedulePreview() {
+  const start = $('scheduleStart').value;
+  const end = $('scheduleEnd').value;
 
-  const code = input.value.trim().toUpperCase();
-  if (!VALID_CODES.includes(code)) {
-    showAlert('Código inválido', 'El código introducido no es válido', '❌');
+  $('schedulePreview').textContent = `${start} - ${end}`;
+
+  // Calcular duración
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  const totalMinutes = endMinutes - startMinutes;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  $('scheduleDuration').textContent = `${hours}h ${minutes}m`;
+}
+
+function applyPreset(start, end) {
+  $('scheduleStart').value = start;
+  $('scheduleEnd').value = end;
+  updateSchedulePreview();
+}
+
+function saveScheduleConfig() {
+  const enabled = $('scheduleEnabled').checked;
+  const start = $('scheduleStart').value;
+  const end = $('scheduleEnd').value;
+
+  // Validar que fin sea mayor que inicio
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+
+  if ((eh * 60 + em) <= (sh * 60 + sm)) {
+    showAlert('Error', 'La hora de fin debe ser posterior a la hora de inicio', '⚠️');
     return;
   }
 
-  state.isFull = true;
-  state.license = code;
-  localStorage.setItem("focowork_full", "true");
-  localStorage.setItem("focowork_license", code);
-
-  save();
-  updateUI();
-  
-  input.value = '';
-  showAlert('¡Activado!', 'Versión completa activada correctamente.\n¡Disfruta de FOCOwork sin límites!', '✅');
-}
-
-/* ================= EVENTOS ================= */
-
-document.querySelectorAll(".activity").forEach(b =>
-  b.onclick = () => setActivity(b.dataset.activity)
-);
-
-$("newClient").onclick = newClient;
-$("changeClient").onclick = changeClient;
-$("historyBtn").onclick = showHistory;
-$("closeClient").onclick = closeClient;
-$("deleteClientBtn").onclick = deleteCurrentClient;
-$("cameraBtn").onclick = addPhotoToClient;
-$("focusBtn").onclick = showFocus;
-$("todayBtn").onclick = exportTodayCSV;
-$("activateFull").onclick = activateWhatsApp;
-$("applyCode").onclick = applyCode;
-
-// Enter en inputs de modales
-$('inputNewClient').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') confirmNewClient();
-});
-
-$('inputDeleteConfirm').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') confirmDeleteClient();
-});
-
-/* ================= INIT ================= */
-
-updateUI();
+  // Guardar configuración
+  state.focusSchedule.enabled = enabled;
+  state.focusSchedule.start = start;
+  state.focusSchedule.end = end
