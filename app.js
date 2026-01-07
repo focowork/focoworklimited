@@ -1,0 +1,1038 @@
+/*************************************************
+ * FOCOWORK – app.js (V3.0 - SISTEMA DE LICENCIAS Y BACKUP)
+ * - Licencias mediante archivo descargable
+ * - Exportación/Importación completa con imágenes
+ * - Backup automático
+ * - Protección contra pérdida de datos
+ *************************************************/
+
+/* ================= CONFIG ================= */
+
+const WHATSAPP_PHONE = "34649383847";
+const APP_VERSION = "3.0";
+const LICENSE_SECRET = "FW2025-SECURE-KEY-X7Y9Z"; // DEBE COINCIDIR con generador
+
+/* ================= ACTIVITIES (INTERNAL KEYS) ================= */
+
+const ACTIVITIES = {
+  WORK: "work",
+  PHONE: "phone",
+  CLIENT: "client",
+  VISIT: "visit",
+  OTHER: "other"
+};
+
+function activityLabel(act) {
+  switch (act) {
+    case ACTIVITIES.WORK: return "Trabajo";
+    case ACTIVITIES.PHONE: return "Teléfono";
+    case ACTIVITIES.CLIENT: return "Cliente";
+    case ACTIVITIES.VISIT: return "Visitando";
+    case ACTIVITIES.OTHER: return "Otros";
+    default: return act;
+  }
+}
+
+/* ================= HELPERS ================= */
+
+const $ = (id) => document.getElementById(id);
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function formatTime(sec) {
+  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isWithinFocusSchedule(date = new Date()) {
+  if (!state.focusSchedule || !state.focusSchedule.enabled) {
+    return true;
+  }
+
+  const [sh, sm] = state.focusSchedule.start.split(":").map(Number);
+  const [eh, em] = state.focusSchedule.end.split(":").map(Number);
+
+  const minutesNow = date.getHours() * 60 + date.getMinutes();
+  const minutesStart = sh * 60 + sm;
+  const minutesEnd = eh * 60 + em;
+
+  return minutesNow >= minutesStart && minutesNow <= minutesEnd;
+}
+
+/* ================= SISTEMA DE FIRMA DE LICENCIAS ================= */
+
+async function generateHash(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text + LICENSE_SECRET);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyLicenseSignature(license) {
+  if (!license || !license.signature || !license.clientId || !license.clientName) {
+    return false;
+  }
+  
+  const dataToSign = `${license.clientId}-${license.clientName}-${license.expiryDate || 'unlimited'}`;
+  const expectedHash = await generateHash(dataToSign);
+  
+  return license.signature === expectedHash;
+}
+
+/* ================= MODALES ================= */
+
+function openModal(id) {
+  const modal = $(id);
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeModal(id) {
+  const modal = $(id);
+  if (modal) modal.classList.add('hidden');
+}
+
+function showAlert(title, message, icon = 'ℹ️') {
+  $('alertTitle').textContent = title;
+  $('alertText').textContent = message;
+  $('alertIcon').textContent = icon;
+  openModal('modalAlert');
+}
+
+/* ================= USER ================= */
+
+let userName = localStorage.getItem("focowork_user_name") || "Usuario";
+
+/* ================= STATE ================= */
+
+let state = JSON.parse(localStorage.getItem("focowork_state")) || {
+  isFull: false,
+  license: null,
+  day: todayKey(),
+  currentClientId: null,
+  currentActivity: null,
+  lastTick: null,
+  sessionElapsed: 0,
+  clients: {},
+  focus: {},
+  focusSchedule: {
+    enabled: false,
+    start: "09:00",
+    end: "17:00"
+  }
+};
+
+function save() {
+  localStorage.setItem("focowork_state", JSON.stringify(state));
+  
+  if (state.currentClientId) {
+    scheduleAutoBackup();
+  }
+}
+
+/* ================= AUTO-BACKUP ================= */
+
+let autoBackupTimeout = null;
+
+function scheduleAutoBackup() {
+  clearTimeout(autoBackupTimeout);
+  
+  autoBackupTimeout = setTimeout(() => {
+    if (state.currentClientId && state.clients[state.currentClientId]) {
+      performAutoBackup();
+    }
+  }, 300000);
+}
+
+function performAutoBackup() {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+  
+  const backup = {
+    version: APP_VERSION,
+    timestamp: new Date().toISOString(),
+    client: client
+  };
+  
+  const backupKey = `focowork_autobackup_${client.id}`;
+  try {
+    localStorage.setItem(backupKey, JSON.stringify(backup));
+  } catch (e) {
+    console.warn('Auto-backup falló:', e);
+  }
+}
+
+/* ================= DAILY RESET ================= */
+
+function resetDayIfNeeded() {
+  if (state.day !== todayKey()) {
+    state.day = todayKey();
+    state.focus = {};
+    save();
+  }
+}
+
+/* ================= SISTEMA DE LICENCIAS ================= */
+
+async function loadLicenseFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.focowork,.json';
+  
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const license = JSON.parse(text);
+      
+      if (!license.signature || !license.clientId) {
+        showAlert('Archivo inválido', 'Este no es un archivo de licencia válido', '❌');
+        return;
+      }
+      
+      const isValid = await verifyLicenseSignature(license);
+      
+      if (!isValid) {
+        showAlert('Licencia inválida', 'El archivo de licencia no es válido o ha sido modificado', '❌');
+        return;
+      }
+      
+      if (license.expiryDate) {
+        const expiry = new Date(license.expiryDate);
+        if (expiry < new Date()) {
+          showAlert('Licencia caducada', 'Esta licencia ha expirado el ' + expiry.toLocaleDateString(), '⏰');
+          return;
+        }
+      }
+      
+      state.isFull = true;
+      state.license = license;
+      save();
+      updateUI();
+      
+      const expiryText = license.expiryDate 
+        ? `Válida hasta: ${new Date(license.expiryDate).toLocaleDateString()}`
+        : 'Sin límite de tiempo';
+      
+      showAlert(
+        '¡Licencia activada!', 
+        `FocoWork completo activado\n\nCliente: ${license.clientName}\n${expiryText}\n\n¡Disfruta de clientes ilimitados!`,
+        '🎉'
+      );
+      
+    } catch (err) {
+      showAlert('Error', 'No se pudo leer el archivo de licencia', '❌');
+    }
+  };
+  
+  input.click();
+}
+
+function requestLicense() {
+  const msg = `Hola, necesito una licencia de FocoWork completo`;
+  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`);
+}
+
+/* ================= EXPORTACIÓN/IMPORTACIÓN COMPLETA ================= */
+
+function exportCurrentWork() {
+  const client = state.clients[state.currentClientId];
+  if (!client) {
+    showAlert('Sin cliente', 'Selecciona un cliente primero', '⚠️');
+    return;
+  }
+  
+  const workData = {
+    version: APP_VERSION,
+    exportDate: new Date().toISOString(),
+    client: client,
+    userName: userName
+  };
+  
+  const dataStr = JSON.stringify(workData, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trabajo_${client.name.replace(/[^a-z0-9]/gi, '_')}_${todayKey()}.focowork`;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+  
+  showAlert('Trabajo guardado', 'El archivo se ha descargado correctamente.\n\n¡Guárdalo en lugar seguro!', '💾');
+}
+
+function importWork() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.focowork,.json';
+  
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const workData = JSON.parse(text);
+      
+      if (!workData.client || !workData.version) {
+        showAlert('Archivo inválido', 'Este archivo no es un trabajo válido de FocoWork', '❌');
+        return;
+      }
+      
+      $('importClientName').textContent = workData.client.name;
+      $('importClientTime').textContent = formatTime(workData.client.total);
+      $('importClientPhotos').textContent = workData.client.photos.length;
+      $('importClientNotes').textContent = workData.client.notes ? '✓ Sí' : '— No';
+      
+      window.pendingImport = workData;
+      
+      openModal('modalImportWork');
+      
+    } catch (err) {
+      showAlert('Error', 'No se pudo leer el archivo', '❌');
+    }
+  };
+  
+  input.click();
+}
+
+function confirmImport() {
+  if (!window.pendingImport) return;
+  
+  const workData = window.pendingImport;
+  const newId = uid();
+  
+  state.clients[newId] = {
+    ...workData.client,
+    id: newId,
+    active: true
+  };
+  
+  state.currentClientId = newId;
+  state.currentActivity = ACTIVITIES.WORK;
+  state.sessionElapsed = 0;
+  state.lastTick = Date.now();
+  isWorkpadInitialized = false;
+  
+  save();
+  updateUI();
+  closeModal('modalImportWork');
+  
+  showAlert('Trabajo importado', `Cliente "${workData.client.name}" importado correctamente\n\nTiempo: ${formatTime(workData.client.total)}\nFotos: ${workData.client.photos.length}`, '✅');
+  
+  window.pendingImport = null;
+}
+
+/* ================= EXPORTAR TODO ================= */
+
+function exportAllData() {
+  const exportData = {
+    version: APP_VERSION,
+    exportDate: new Date().toISOString(),
+    userName: userName,
+    state: state,
+    license: state.license
+  };
+  
+  const dataStr = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `focowork_completo_${todayKey()}.focowork`;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+  
+  showAlert('Backup completo', 'Todos tus datos han sido exportados.\n\n¡Guarda este archivo en lugar seguro!', '💾');
+}
+
+/* ================= TIME ENGINE ================= */
+
+function tick() {
+  resetDayIfNeeded();
+
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.active || !state.currentActivity || !state.lastTick) {
+    state.lastTick = Date.now();
+    return;
+  }
+
+  const now = Date.now();
+  const elapsed = Math.floor((now - state.lastTick) / 1000);
+  if (elapsed <= 0) return;
+
+  state.lastTick = now;
+  state.sessionElapsed += elapsed;
+  client.total += elapsed;
+
+  client.activities[state.currentActivity] =
+    (client.activities[state.currentActivity] || 0) + elapsed;
+
+  if (isWithinFocusSchedule()) {
+    state.focus[state.currentActivity] =
+      (state.focus[state.currentActivity] || 0) + elapsed;
+  }
+
+  save();
+  updateUI();
+}
+
+setInterval(tick, 1000);
+
+/* ================= ACTIVIDADES ================= */
+
+function setActivity(activity) {
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.active) {
+    showAlert('Sin cliente', 'Primero selecciona un cliente activo', '⚠️');
+    return;
+  }
+
+  state.currentActivity = activity;
+  state.sessionElapsed = 0;
+  state.lastTick = Date.now();
+  save();
+  updateUI();
+}
+
+/* ================= WORKPAD (NOTAS) ================= */
+
+let workpadTimeout = null;
+let isWorkpadInitialized = false;
+
+function updateWorkpad() {
+  const workpadArea = $('clientWorkpad');
+  const client = state.clients[state.currentClientId];
+  
+  if (!workpadArea || !client) {
+    if (workpadArea) {
+      workpadArea.style.display = 'none';
+      isWorkpadInitialized = false;
+    }
+    return;
+  }
+
+  workpadArea.style.display = 'block';
+  
+  const savedNote = client.notes || '';
+  if (workpadArea.value !== savedNote && !isWorkpadInitialized) {
+    workpadArea.value = savedNote;
+  }
+  
+  if (!isWorkpadInitialized) {
+    workpadArea.oninput = handleWorkpadInput;
+    isWorkpadInitialized = true;
+  }
+}
+
+function handleWorkpadInput(e) {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  client.notes = e.target.value;
+  clearTimeout(workpadTimeout);
+
+  workpadTimeout = setTimeout(() => {
+    save();
+  }, 1000);
+}
+
+/* ================= UI ================= */
+
+function updateUI() {
+  const client = state.currentClientId
+    ? state.clients[state.currentClientId]
+    : null;
+
+  $("clientName").textContent = client
+    ? `Cliente: ${client.name}${client.active ? "" : " (cerrado)"}`
+    : "Sin cliente activo";
+
+  $("activityName").textContent = state.currentActivity 
+    ? activityLabel(state.currentActivity) 
+    : "—";
+  
+  $("timer").textContent =
+    client && client.active ? formatTime(state.sessionElapsed) : "00:00:00";
+
+  if ($("clientTotal")) {
+    $("clientTotal").textContent = client
+      ? `Total cliente: ${formatTime(client.total)}`
+      : "";
+  }
+
+  document.querySelectorAll(".activity").forEach(btn => {
+    btn.classList.toggle(
+      "active",
+      btn.dataset.activity === state.currentActivity
+    );
+  });
+
+  $("cameraBtn").style.display = client && client.active ? "block" : "none";
+
+  const deleteBtn = $("deleteClientBtn");
+  if (deleteBtn) {
+    deleteBtn.style.display = client && !client.active ? "block" : "none";
+  }
+
+  $("versionBox").style.display = state.isFull ? "none" : "block";
+
+  if (state.isFull && state.license) {
+    updateLicenseInfo();
+  }
+
+  updateFocusScheduleStatus();
+  updateWorkpad();
+  renderPhotoGallery();
+}
+
+function updateLicenseInfo() {
+  const infoEl = $("licenseInfo");
+  if (!infoEl || !state.license) return;
+  
+  const expiryText = state.license.expiryDate 
+    ? `Válida hasta: ${new Date(state.license.expiryDate).toLocaleDateString()}`
+    : 'Sin límite';
+  
+  infoEl.textContent = `✓ Licencia activa - ${state.license.clientName} - ${expiryText}`;
+  infoEl.style.display = 'block';
+}
+
+function updateFocusScheduleStatus() {
+  const statusEl = $("focusScheduleStatus");
+  if (!statusEl) return;
+
+  if (state.focusSchedule.enabled && !isWithinFocusSchedule()) {
+    statusEl.textContent = "⏳ Fuera de horario de enfoque";
+    statusEl.style.display = "block";
+  } else {
+    statusEl.style.display = "none";
+  }
+}
+
+/* ================= CLIENTES ================= */
+
+function newClient() {
+  const activeClients = Object.values(state.clients).filter(c => c.active);
+  if (!state.isFull && activeClients.length >= 2) {
+    showAlert('Versión demo', 'Máximo 2 clientes activos.\n\nActiva la versión completa para clientes ilimitados.', '🔒');
+    return;
+  }
+
+  $('inputNewClient').value = '';
+  openModal('modalNewClient');
+  
+  setTimeout(() => $('inputNewClient').focus(), 300);
+}
+
+function confirmNewClient() {
+  const name = $('inputNewClient').value.trim();
+  if (!name) return;
+
+  const id = uid();
+  state.clients[id] = {
+    id,
+    name,
+    active: true,
+    total: 0,
+    activities: {},
+    photos: [],
+    notes: ""
+  };
+
+  state.currentClientId = id;
+  state.currentActivity = ACTIVITIES.WORK;
+  state.sessionElapsed = 0;
+  state.lastTick = Date.now();
+  isWorkpadInitialized = false;
+
+  save();
+  updateUI();
+  closeModal('modalNewClient');
+}
+
+function changeClient() {
+  const actives = Object.values(state.clients).filter(c => c.active);
+  if (!actives.length) {
+    showAlert('Sin clientes', 'No hay clientes activos', '⚠️');
+    return;
+  }
+
+  const list = $('activeClientsList');
+  list.innerHTML = '';
+
+  actives.forEach(client => {
+    const item = document.createElement('div');
+    item.className = 'client-item';
+    item.innerHTML = `
+      <div class="client-name">${client.name}</div>
+      <div class="client-time">Total: ${formatTime(client.total)}</div>
+    `;
+    item.onclick = () => selectClient(client.id);
+    list.appendChild(item);
+  });
+
+  openModal('modalChangeClient');
+}
+
+function selectClient(clientId) {
+  state.currentClientId = clientId;
+  state.currentActivity = ACTIVITIES.WORK;
+  state.sessionElapsed = 0;
+  state.lastTick = Date.now();
+  isWorkpadInitialized = false;
+
+  save();
+  updateUI();
+  closeModal('modalChangeClient');
+}
+
+function closeClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  if (client.photos.length > 0 || (client.notes && client.notes.trim())) {
+    $('exportBeforeCloseText').textContent = 
+      `Este cliente tiene ${client.photos.length} fotos y notas.\n\n¿Deseas exportar el trabajo antes de cerrar?`;
+    
+    window.clientToClose = client.id;
+    openModal('modalExportBeforeClose');
+    return;
+  }
+
+  $('closeClientText').textContent = 
+    `Cliente: ${client.name}\nTiempo total: ${formatTime(client.total)}`;
+  
+  openModal('modalCloseClient');
+}
+
+function confirmCloseClient() {
+  const clientId = window.clientToClose || state.currentClientId;
+  const client = state.clients[clientId];
+  if (!client) return;
+
+  client.active = false;
+
+  state.currentClientId = null;
+  state.currentActivity = null;
+  state.lastTick = null;
+  isWorkpadInitialized = false;
+
+  save();
+  updateUI();
+  closeModal('modalCloseClient');
+  closeModal('modalExportBeforeClose');
+  
+  showAlert('Cliente cerrado', `${client.name}\nTiempo total: ${formatTime(client.total)}`, '✅');
+  
+  window.clientToClose = null;
+}
+
+function exportAndClose() {
+  exportCurrentWork();
+  
+  setTimeout(() => {
+    confirmCloseClient();
+  }, 500);
+}
+
+/* ================= HISTÓRICO ================= */
+
+function showHistory() {
+  const closed = Object.values(state.clients).filter(c => !c.active);
+  if (!closed.length) {
+    showAlert('Sin histórico', 'No hay clientes cerrados', 'ℹ️');
+    return;
+  }
+
+  renderHistoryList(closed);
+  openModal('modalHistory');
+}
+
+function renderHistoryList(clients) {
+  const list = $('historyClientsList');
+  list.innerHTML = '';
+
+  if (!clients.length) {
+    list.innerHTML = '<p class="modal-text" style="opacity: 0.6; text-align: center;">Sin resultados</p>';
+    return;
+  }
+
+  clients.forEach(client => {
+    const item = document.createElement('div');
+    item.className = 'client-item';
+    
+    const notesPreview = client.notes && client.notes.trim() 
+      ? ` • ${client.notes.slice(0, 30)}${client.notes.length > 30 ? '...' : ''}`
+      : '';
+    
+    item.innerHTML = `
+      <div class="client-name">${client.name}</div>
+      <div class="client-time">Total: ${formatTime(client.total)} • ${client.photos.length} fotos${notesPreview}</div>
+    `;
+    item.onclick = () => selectHistoryClient(client.id);
+    list.appendChild(item);
+  });
+}
+
+function selectHistoryClient(clientId) {
+  state.currentClientId = clientId;
+  state.currentActivity = null;
+  state.sessionElapsed = 0;
+  state.lastTick = null;
+  isWorkpadInitialized = false;
+
+  updateUI();
+  closeModal('modalHistory');
+}
+
+/* ================= BORRAR CLIENTE ================= */
+
+function deleteCurrentClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client || client.active) return;
+
+  $('deleteClientText').textContent = 
+    `Cliente: ${client.name}\nTiempo: ${formatTime(client.total)}\nFotos: ${client.photos.length}\n\nEsta acción no se puede deshacer.`;
+  
+  $('inputDeleteConfirm').value = '';
+  openModal('modalDeleteClient');
+  
+  setTimeout(() => $('inputDeleteConfirm').focus(), 300);
+}
+
+function confirmDeleteClient() {
+  const confirm = $('inputDeleteConfirm').value.trim().toUpperCase();
+  
+  if (confirm !== 'BORRAR') {
+    showAlert('Error', 'Debes escribir BORRAR para confirmar', '⚠️');
+    return;
+  }
+
+  delete state.clients[state.currentClientId];
+  state.currentClientId = null;
+  state.currentActivity = null;
+  state.lastTick = null;
+  isWorkpadInitialized = false;
+
+  save();
+  updateUI();
+  closeModal('modalDeleteClient');
+  
+  showAlert('Cliente eliminado', 'El cliente ha sido eliminado definitivamente', '🗑️');
+}
+
+/* ================= FOTOS ================= */
+
+let photoToDelete = null;
+
+function addPhotoToClient() {
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1024;
+        let { width, height } = img;
+
+        if (width > MAX) {
+          height *= MAX / width;
+          width = MAX;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+
+        client.photos.push({
+          id: uid(),
+          date: new Date().toISOString(),
+          data: canvas.toDataURL("image/jpeg", 0.7)
+        });
+
+        save();
+        renderPhotoGallery();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  input.click();
+}
+
+function renderPhotoGallery() {
+  const gallery = $("photoGallery");
+  if (!gallery) return;
+  gallery.innerHTML = "";
+
+  const client = state.clients[state.currentClientId];
+  if (!client || !client.photos.length) return;
+
+  [...client.photos]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .forEach(p => {
+      const img = document.createElement("img");
+      img.src = p.data;
+      img.className = "photo-thumb";
+
+      img.onclick = () => {
+        const w = window.open();
+        if (w) {
+          w.document.write(
+            `<img src="${p.data}" style="width:100%;background:#000">`
+          );
+        }
+      };
+
+      img.oncontextmenu = (e) => {
+        e.preventDefault();
+        photoToDelete = p.id;
+        openModal('modalDeletePhoto');
+      };
+
+      gallery.appendChild(img);
+    });
+}
+
+function confirmDeletePhoto() {
+  if (!photoToDelete) return;
+
+  const client = state.clients[state.currentClientId];
+  if (!client) return;
+
+  client.photos = client.photos.filter(f => f.id !== photoToDelete);
+  photoToDelete = null;
+  
+  save();
+  renderPhotoGallery();
+  closeModal('modalDeletePhoto');
+}
+
+/* ================= ENFOQUE ================= */
+
+function showFocus() {
+  const total = Object.values(state.focus).reduce((a, b) => a + b, 0);
+  if (!total) {
+    showAlert('Sin datos', 'Aún no hay datos de enfoque hoy', 'ℹ️');
+    return;
+  }
+
+  const trabajo = state.focus[ACTIVITIES.WORK] || 0;
+  const pct = Math.round((trabajo / total) * 100);
+
+  $('modalUserName').textContent = userName;
+  $('modalTotalTime').textContent = formatTime(total);
+  
+  const list = $('modalActivityList');
+  list.innerHTML = '';
+  
+  for (const act in state.focus) {
+    const seconds = state.focus[act];
+    const actPct = Math.round((seconds / total) * 100);
+    
+    const item = document.createElement('div');
+    item.className = 'activity-item';
+    item.innerHTML = `
+      <span class="activity-name">${activityLabel(act)}</span>
+      <div class="activity-stats">
+        <span class="activity-time">${formatTime(seconds)}</span>
+        <span class="activity-percent">${actPct}%</span>
+      </div>
+    `;
+    list.appendChild(item);
+  }
+
+  const focusState = $('modalFocusState');
+  if (pct >= 64) {
+    focusState.className = 'focus-state enfocado';
+    focusState.innerHTML = '🟢 Enfocado';
+  } else if (pct >= 40) {
+    focusState.className = 'focus-state atencion';
+    focusState.innerHTML = '🟡 Atención';
+  } else {
+    focusState.className = 'focus-state disperso';
+    focusState.innerHTML = '🔴 Disperso';
+  }
+
+  openModal('modalEnfoque');
+}
+
+/* ================= CSV ================= */
+
+function exportTodayCSV() {
+  let csv = "Usuario,Cliente,Tiempo,Notas\n";
+  Object.values(state.clients).forEach(c => {
+    const notes = (c.notes || '').replace(/[\n\r]/g, ' ').replace(/"/g, '""');
+    csv += `${userName},"${c.name}",${formatTime(c.total)},"${notes}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `focowork_${todayKey()}.csv`;
+  a.click();
+  
+  showAlert('CSV exportado', 'El archivo se ha descargado correctamente', '📄');
+}
+
+/* ================= CONFIGURACIÓN DE HORARIO ================= */
+
+function openScheduleModal() {
+  const checkbox = $('scheduleEnabled');
+  const config = $('scheduleConfig');
+  const startInput = $('scheduleStart');
+  const endInput = $('scheduleEnd');
+
+  checkbox.checked = state.focusSchedule.enabled;
+  startInput.value = state.focusSchedule.start;
+  endInput.value = state.focusSchedule.end;
+
+  config.style.display = checkbox.checked ? 'block' : 'none';
+
+  updateSchedulePreview();
+
+  checkbox.onchange = () => {
+    config.style.display = checkbox.checked ? 'block' : 'none';
+  };
+
+  startInput.oninput = updateSchedulePreview;
+  endInput.oninput = updateSchedulePreview;
+
+  openModal('modalSchedule');
+}
+
+function updateSchedulePreview() {
+  const start = $('scheduleStart').value;
+  const end = $('scheduleEnd').value;
+
+  $('schedulePreview').textContent = `${start} - ${end}`;
+
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  const totalMinutes = endMinutes - startMinutes;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  $('scheduleDuration').textContent = `${hours}h ${minutes}m`;
+}
+
+function applyPreset(start, end) {
+  $('scheduleStart').value = start;
+  $('scheduleEnd').value = end;
+  updateSchedulePreview();
+}
+
+function saveScheduleConfig() {
+  const enabled = $('scheduleEnabled').checked;
+  const start = $('scheduleStart').value;
+  const end = $('scheduleEnd').value;
+
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+
+  if ((eh * 60 + em) <= (sh * 60 + sm)) {
+    showAlert('Error', 'La hora de fin debe ser posterior a la hora de inicio', '⚠️');
+    return;
+  }
+
+  state.focusSchedule.enabled = enabled;
+  state.focusSchedule.start = start;
+  state.focusSchedule.end = end;
+
+  save();
+  closeModal('modalSchedule');
+  showAlert('Guardado', 'Configuración de horario guardada correctamente', '✅');
+}
+
+/* ================= EVENT LISTENERS ================= */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  // BOTONES PRINCIPALES
+  $('newClient').onclick = newClient;
+  $('changeClient').onclick = changeClient;
+  $('historyBtn').onclick = showHistory;
+  $('closeClient').onclick = closeClient;
+  $('focusBtn').onclick = showFocus;
+  $('scheduleBtn').onclick = openScheduleModal;
+  $('todayBtn').onclick = exportTodayCSV;
+  $('cameraBtn').onclick = addPhotoToClient;
+  $('deleteClientBtn').onclick = deleteCurrentClient;
+
+  // NUEVOS BOTONES - BACKUP Y LICENCIAS
+  $('exportWorkBtn').onclick = exportCurrentWork;
+  $('importWorkBtn').onclick = importWork;
+  $('exportAllBtn').onclick = exportAllData;
+  $('loadLicenseBtn').onclick = loadLicenseFile;
+  $('requestLicenseBtn').onclick = requestLicense;
+
+  // BOTONES DE ACTIVIDAD
+  document.querySelectorAll('.activity').forEach(btn => {
+    btn.onclick = () => setActivity(btn.dataset.activity);
+  });
+
+  // CERRAR MODALES AL CLIC FUERA
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal(overlay.id);
+    });
+  });
+
+  // BUSCADOR DE HISTÓRICO
+  if ($('searchHistory')) {
+    $('searchHistory').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const closed = Object.values(state.clients).filter(c => !c.active);
+      const filtered = closed.filter(c =>
+        c.name.toLowerCase().includes(query) ||
+        (c.notes || '').toLowerCase().includes(query)
+      );
+      renderHistoryList(filtered);
+    });
+  }
+
+  // VERIFICAR LICENCIA AL INICIO
+  if (state.license && state.license.expiryDate) {
+    const expiry = new Date(state.license.expiryDate);
+    if (expiry < new Date()) {
+      state.isFull = false;
+      state.license = null;
+      save();
+      showAlert('Licencia caducada', 'Tu licencia ha expirado. Contacta para renovarla.', '⏰');
+    }
+  }
+
+  // INICIO
+  updateUI();
+});
