@@ -756,17 +756,19 @@ document.addEventListener('DOMContentLoaded', () => {
   $('cameraBtn').onclick = addPhotoToClient;
   $('deleteClientBtn').onclick = deleteCurrentClient;
 
+  // ACTIVACIÓ
+  $('activateFull').onclick = activateFull;
+  $('applyCode').onclick = applyCode;
+
   // BOTONS D'ACTIVITAT
   document.querySelectorAll('.activity').forEach(btn => {
     btn.onclick = () => setActivity(btn.dataset.activity);
   });
 
-  // CLIC FORA PER TANCAR MODALS
+  // TANCAR MODALS CLIC FORA
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        closeModal(overlay.id);
-      }
+      if (e.target === overlay) closeModal(overlay.id);
     });
   });
 
@@ -783,6 +785,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // INICIALITZACIÓ UI
+  // INICI
   updateUI();
 });
