@@ -4,6 +4,7 @@
  * - Exportación/Importación completa con imágenes
  * - Backup automático
  * - Protección contra pérdida de datos
+ * - Horario de enfoque configurable
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -106,6 +107,17 @@ function showAlert(title, message, icon = 'ℹ️') {
   $('alertIcon').textContent = icon;
   openModal('modalAlert');
 }
+
+// Cerrar modales al hacer clic fuera
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal(overlay.id);
+      }
+    });
+  });
+});
 
 /* ================= USER ================= */
 
@@ -294,7 +306,7 @@ function importWork() {
       $('importClientName').textContent = workData.client.name;
       $('importClientTime').textContent = formatTime(workData.client.total);
       $('importClientPhotos').textContent = workData.client.photos.length;
-      $('importClientNotes').textContent = workData.client.notes ? '✓ Sí' : '— No';
+      $('importClientNotes').textContent = workData.client.notes ? '✔ Sí' : '– No';
       
       window.pendingImport = workData;
       
@@ -382,6 +394,7 @@ function tick() {
   client.activities[state.currentActivity] =
     (client.activities[state.currentActivity] || 0) + elapsed;
 
+  // ✅ Solo suma al enfoque si está dentro del horario
   if (isWithinFocusSchedule()) {
     state.focus[state.currentActivity] =
       (state.focus[state.currentActivity] || 0) + elapsed;
@@ -508,7 +521,7 @@ function updateLicenseInfo() {
     ? `Válida hasta: ${new Date(state.license.expiryDate).toLocaleDateString()}`
     : 'Sin límite';
   
-  infoEl.textContent = `✓ Licencia activa - ${state.license.clientName} - ${expiryText}`;
+  infoEl.textContent = `✔ Licencia activa - ${state.license.clientName} - ${expiryText}`;
   infoEl.style.display = 'block';
 }
 
@@ -898,7 +911,6 @@ function exportTodayCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = `focowork_${todayKey()}.csv`;
   a.click();
-  
   showAlert('CSV exportado', 'El archivo se ha descargado correctamente', '📄');
 }
 
@@ -910,18 +922,23 @@ function openScheduleModal() {
   const startInput = $('scheduleStart');
   const endInput = $('scheduleEnd');
 
+  // Cargar valores actuales
   checkbox.checked = state.focusSchedule.enabled;
   startInput.value = state.focusSchedule.start;
   endInput.value = state.focusSchedule.end;
 
+  // Mostrar/ocultar configuración
   config.style.display = checkbox.checked ? 'block' : 'none';
 
+  // Actualizar preview
   updateSchedulePreview();
 
+  // Event listener para el checkbox
   checkbox.onchange = () => {
     config.style.display = checkbox.checked ? 'block' : 'none';
   };
 
+  // Event listeners para actualizar preview en tiempo real
   startInput.oninput = updateSchedulePreview;
   endInput.oninput = updateSchedulePreview;
 
@@ -934,6 +951,7 @@ function updateSchedulePreview() {
 
   $('schedulePreview').textContent = `${start} - ${end}`;
 
+  // Calcular duración
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
 
@@ -958,6 +976,7 @@ function saveScheduleConfig() {
   const start = $('scheduleStart').value;
   const end = $('scheduleEnd').value;
 
+  // Validar que fin sea mayor que inicio
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
 
@@ -966,73 +985,79 @@ function saveScheduleConfig() {
     return;
   }
 
+  // Guardar configuración
   state.focusSchedule.enabled = enabled;
   state.focusSchedule.start = start;
   state.focusSchedule.end = end;
 
   save();
   closeModal('modalSchedule');
-  showAlert('Guardado', 'Configuración de horario guardada correctamente', '✅');
+
+  const message = enabled 
+    ? `Horario activado: ${start} - ${end}\n\nEl enfoque solo contabilizará tiempo dentro de este horario.`
+    : 'Horario desactivado\n\nEl enfoque contabilizará todo el tiempo trabajado.';
+
+  showAlert('Configuración guardada', message, '✅');
 }
 
 /* ================= EVENT LISTENERS ================= */
 
-document.addEventListener('DOMContentLoaded', () => {
+// BOTONES PRINCIPALES
+$('newClient').onclick = newClient;
+$('changeClient').onclick = changeClient;
+$('historyBtn').onclick = showHistory;
+$('closeClient').onclick = closeClient;
+$('focusBtn').onclick = showFocus;
+$('scheduleBtn').onclick = openScheduleModal;
+$('todayBtn').onclick = exportTodayCSV;
+$('cameraBtn').onclick = addPhotoToClient;
+$('deleteClientBtn').onclick = deleteCurrentClient;
 
-  // BOTONES PRINCIPALES
-  $('newClient').onclick = newClient;
-  $('changeClient').onclick = changeClient;
-  $('historyBtn').onclick = showHistory;
-  $('closeClient').onclick = closeClient;
-  $('focusBtn').onclick = showFocus;
-  $('scheduleBtn').onclick = openScheduleModal;
-  $('todayBtn').onclick = exportTodayCSV;
-  $('cameraBtn').onclick = addPhotoToClient;
-  $('deleteClientBtn').onclick = deleteCurrentClient;
+// NUEVOS BOTONES - BACKUP Y LICENCIAS
+if ($('exportWorkBtn')) $('exportWorkBtn').onclick = exportCurrentWork;
+if ($('importWorkBtn')) $('importWorkBtn').onclick = importWork;
+if ($('exportAllBtn')) $('exportAllBtn').onclick = exportAllData;
+if ($('loadLicenseBtn')) $('loadLicenseBtn').onclick = loadLicenseFile;
+if ($('requestLicenseBtn')) $('requestLicenseBtn').onclick = requestLicense;
 
-  // NUEVOS BOTONES - BACKUP Y LICENCIAS
-  $('exportWorkBtn').onclick = exportCurrentWork;
-  $('importWorkBtn').onclick = importWork;
-  $('exportAllBtn').onclick = exportAllData;
-  $('loadLicenseBtn').onclick = loadLicenseFile;
-  $('requestLicenseBtn').onclick = requestLicense;
-
-  // BOTONES DE ACTIVIDAD
-  document.querySelectorAll('.activity').forEach(btn => {
-    btn.onclick = () => setActivity(btn.dataset.activity);
-  });
-
-  // CERRAR MODALES AL CLIC FUERA
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal(overlay.id);
-    });
-  });
-
-  // BUSCADOR DE HISTÓRICO
-  if ($('searchHistory')) {
-    $('searchHistory').addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      const closed = Object.values(state.clients).filter(c => !c.active);
-      const filtered = closed.filter(c =>
-        c.name.toLowerCase().includes(query) ||
-        (c.notes || '').toLowerCase().includes(query)
-      );
-      renderHistoryList(filtered);
-    });
-  }
-
-  // VERIFICAR LICENCIA AL INICIO
-  if (state.license && state.license.expiryDate) {
-    const expiry = new Date(state.license.expiryDate);
-    if (expiry < new Date()) {
-      state.isFull = false;
-      state.license = null;
-      save();
-      showAlert('Licencia caducada', 'Tu licencia ha expirado. Contacta para renovarla.', '⏰');
-    }
-  }
-
-  // INICIO
-  updateUI();
+// BOTONES DE ACTIVIDAD
+document.querySelectorAll('.activity').forEach(btn => {
+  btn.onclick = () => setActivity(btn.dataset.activity);
 });
+
+// ENTER EN INPUTS
+$('inputNewClient').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') confirmNewClient();
+});
+
+$('inputDeleteConfirm').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') confirmDeleteClient();
+});
+
+// BUSCADOR DE HISTÓRICO
+if ($('searchHistory')) {
+  $('searchHistory').addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const closed = Object.values(state.clients).filter(c => !c.active);
+    const filtered = closed.filter(c =>
+      c.name.toLowerCase().includes(query) ||
+      (c.notes || '').toLowerCase().includes(query)
+    );
+    renderHistoryList(filtered);
+  });
+}
+
+// VERIFICAR LICENCIA AL INICIO
+if (state.license && state.license.expiryDate) {
+  const expiry = new Date(state.license.expiryDate);
+  if (expiry < new Date()) {
+    state.isFull = false;
+    state.license = null;
+    save();
+    showAlert('Licencia caducada', 'Tu licencia ha expirado. Contacta para renovarla.', '⏰');
+  }
+}
+
+/* ================= INIT ================= */
+
+updateUI();
