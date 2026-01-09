@@ -81,6 +81,9 @@
         <button id="importWorkBtn">📂 Cargar trabajo</button>
         <button id="exportAllBtn" class="full-width">🔄 Backup completo</button>
       </div>
+      <p style="font-size: 12px; opacity: 0.6; text-align: center; margin-top: 8px;">
+        💡 El botón "Cargar trabajo" acepta tanto trabajos individuales como backups completos
+      </p>
     </section>
 
     <!-- BORRAR CLIENTE (solo visible para clientes cerrados) -->
@@ -229,6 +232,30 @@
     </div>
   </div>
 
+  <!-- MODAL: Importar Backup Completo -->
+  <div id="modalImportBackup" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">🔄</span>
+        <h2 class="modal-title">Restaurar backup completo</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text" style="color: #fbbf24;">⚠️ ATENCIÓN: Esto restaurará TODOS tus datos desde el backup.</p>
+        <div style="background: rgba(51, 65, 85, 0.4); padding: 16px; border-radius: 12px; margin: 12px 0;">
+          <p style="margin: 8px 0;"><strong>Total clientes:</strong> <span id="importBackupClients"></span></p>
+          <p style="margin: 8px 0;"><strong>Clientes activos:</strong> <span id="importBackupActive"></span></p>
+          <p style="margin: 8px 0;"><strong>Fecha backup:</strong> <span id="importBackupDate"></span></p>
+          <p style="margin: 8px 0;"><strong>Licencia incluida:</strong> <span id="importBackupLicense"></span></p>
+        </div>
+        <p class="modal-text" style="font-size: 13px; opacity: 0.8;">La página se recargará automáticamente después de restaurar.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalImportBackup')">Cancelar</button>
+        <button class="btn-success" onclick="confirmImportBackup()">Restaurar backup</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Confirmar Borrar Cliente -->
   <div id="modalDeleteClient" class="modal-overlay hidden">
     <div class="modal modal-confirm">
@@ -364,4 +391,4 @@
 
   <script src="app.js"></script>
 </body>
-                                                                   </html>
+</html>
