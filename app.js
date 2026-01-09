@@ -6,6 +6,8 @@
  * - Protección contra pérdida de datos
  * - Horario de enfoque configurable
  * - Monitoreo de almacenamiento
+ * - Exportación a Google Drive con OAuth
+ * - Interruptor para backups automáticos en Drive
  *************************************************/
 
 /* ================= CONFIG ================= */
@@ -13,6 +15,8 @@
 const WHATSAPP_PHONE = "34649383847";
 const APP_VERSION = "3.0";
 const LICENSE_SECRET = "FW2025-SECURE-KEY-X7Y9Z"; // DEBE COINCIDIR con generador
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com'; // Reemplaza con tu Client ID real de Google Cloud
+const GOOGLE_API_KEY = 'YOUR_API_KEY'; // Opcional, si lo necesitas para discovery
 
 /* ================= ACTIVITIES (INTERNAL KEYS) ================= */
 
@@ -150,7 +154,8 @@ let state = JSON.parse(localStorage.getItem("focowork_state")) || {
     enabled: false,
     start: "09:00",
     end: "17:00"
-  }
+  },
+  autoDriveBackup: false  // Nuevo: Interruptor para backups automáticos en Drive
 };
 
 function save() {
@@ -190,6 +195,157 @@ function performAutoBackup() {
     localStorage.setItem(backupKey, JSON.stringify(backup));
   } catch (e) {
     console.warn('Auto-backup falló:', e);
+  }
+}
+
+/* ================= BACKUPS AUTOMÀTICS A MITJANIT ================= */
+
+function performFullAutoBackup() {
+  const backup = {
+    version: APP_VERSION,
+    timestamp: new Date().toISOString(),
+    userName: userName,
+    state: JSON.parse(JSON.stringify(state)), // Còpia profunda per evitar referències
+    type: 'full_backup'
+  };
+  
+  try {
+    localStorage.setItem('focowork_full_autobackup', JSON.stringify(backup));
+    console.log('Backup complet automàtic realitzat a mitjanit:', backup.timestamp);
+  } catch (e) {
+    console.warn('Backup complet automàtic fallit:', e);
+  }
+  
+  // Nuevo: Si el interruptor está activado, también hacer backup en Drive
+  if (state.autoDriveBackup) {
+    exportAllToDrive(true); // El 'true' indica modo automático (sin pedir sign-in si ya está)
+  }
+  
+  // Programar el següent per d'aquí 24 hores
+  setTimeout(performFullAutoBackup, 24 * 60 * 60 * 1000);
+}
+
+function scheduleFullAutoBackup() {
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+  const msToMidnight = nextMidnight.getTime() - now.getTime();
+  
+  setTimeout(performFullAutoBackup, msToMidnight);
+}
+
+/* ================= INTEGRACIÓ GOOGLE DRIVE ================= */
+
+let isGoogleInitialized = false;
+
+function initGoogleAPI() {
+  gapi.load('client:auth2', () => {
+    gapi.client.init({
+      apiKey: GOOGLE_API_KEY,
+      clientId: GOOGLE_CLIENT_ID,
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+      scope: 'https://www.googleapis.com/auth/drive.file'
+    }).then(() => {
+      isGoogleInitialized = true;
+      gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+      updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+    }, (error) => {
+      showAlert('Error Google API', 'No se pudo inicializar Google API: ' + JSON.stringify(error), '❌');
+    });
+  });
+}
+
+function updateSigninStatus(isSignedIn) {
+  // Puedes actualizar UI si es necesario
+}
+
+function handleGoogleSignIn() {
+  return gapi.auth2.getAuthInstance().signIn();
+}
+
+async function exportAllToDrive(autoMode = false) {
+  if (!isGoogleInitialized) {
+    if (!autoMode) showAlert('Google API no lista', 'La integración con Google Drive no está inicializada. Recarga la página.', '⚠️');
+    return;
+  }
+
+  if (!gapi.auth2.getAuthInstance().isSignedIn.get()) {
+    if (autoMode) {
+      console.log('Backup automático a Drive omitido: No autenticado');
+      return;
+    }
+    try {
+      await handleGoogleSignIn();
+    } catch (err) {
+      showAlert('Autenticación fallida', 'No se pudo autenticar con Google: ' + err.error, '❌');
+      return;
+    }
+  }
+
+  const exportData = {
+    version: APP_VERSION,
+    exportDate: new Date().toISOString(),
+    userName: userName,
+    state: state,
+    license: state.license,
+    type: 'full_backup'
+  };
+
+  const dataStr = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+
+  const metadata = {
+    name: `focowork_completo_${todayKey()}.focowork`,
+    mimeType: 'application/json'
+  };
+
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', blob);
+
+  try {
+    const accessToken = gapi.auth.getToken().access_token;
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+      body: form
+    });
+
+    if (!response.ok) {
+      throw new Error('Error en la respuesta: ' + response.statusText);
+    }
+
+    const result = await response.json();
+    if (!autoMode) {
+      showAlert('Exportado a Drive', `Backup subido correctamente a tu Google Drive.\nID del archivo: ${result.id}`, '✅');
+    } else {
+      console.log('Backup automático a Drive completado:', result.id);
+    }
+  } catch (err) {
+    if (!autoMode) {
+      showAlert('Error en exportación', 'No se pudo subir a Google Drive: ' + err.message, '❌');
+    } else {
+      console.warn('Backup automático a Drive fallido:', err);
+    }
+  }
+}
+
+/* ================= CONFIGURACIÓN DE BACKUPS (NUEVO INTERRUPTOR) ================= */
+
+function openBackupConfigModal() {
+  const checkbox = $('autoDriveBackupCheckbox');
+  if (checkbox) {
+    checkbox.checked = state.autoDriveBackup;
+  }
+  openModal('modalBackupConfig');
+}
+
+function saveBackupConfig() {
+  const checkbox = $('autoDriveBackupCheckbox');
+  if (checkbox) {
+    state.autoDriveBackup = checkbox.checked;
+    save();
+    closeModal('modalBackupConfig');
+    showAlert('Configuración guardada', state.autoDriveBackup ? 'Backups automáticos en Drive activados' : 'Backups automáticos en Drive desactivados', '✅');
   }
 }
 
@@ -1179,6 +1335,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if ($('loadLicenseBtn')) $('loadLicenseBtn').onclick = loadLicenseFile;
   if ($('requestLicenseBtn')) $('requestLicenseBtn').onclick = requestLicense;
   if ($('storageBtn')) $('storageBtn').onclick = showStorageInfo;
+  if ($('exportToDriveBtn')) $('exportToDriveBtn').onclick = () => exportAllToDrive(false);
+  if ($('backupConfigBtn')) $('backupConfigBtn').onclick = openBackupConfigModal; // Nuevo botón para el interruptor
 
   // Pulsación larga en botón Enfoque para resetear
   let focusLongPressTimer;
@@ -1251,6 +1409,9 @@ document.addEventListener('DOMContentLoaded', () => {
       showAlert('Licencia caducada', 'Tu licencia ha expirado. Contacta para renovarla.', '⏰');
     }
   }
+
+  // PROGRAMAR BACKUPS A MITJANIT
+  scheduleFullAutoBackup();
 
   // INICIO
   updateUI();
